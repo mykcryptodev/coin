@@ -54,6 +54,9 @@ export default function MeScreen() {
   const createOnrampUrl = useAction(api.cdp.createOnrampUrl);
   const [addMoneyLoading, setAddMoneyLoading] = useState(false);
 
+  const createOfframpUrl = useAction(api.cdp.createOfframpUrl);
+  const [transferLoading, setTransferLoading] = useState(false);
+
   const handleAddMoney = async () => {
     if (!walletAddress) {
       Alert.alert("Error", "No wallet address found.");
@@ -71,6 +74,26 @@ export default function MeScreen() {
       );
     } finally {
       setAddMoneyLoading(false);
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!walletAddress) {
+      Alert.alert("Error", "No wallet address found.");
+      return;
+    }
+    setTransferLoading(true);
+    try {
+      const url = await createOfframpUrl({ address: walletAddress });
+      await WebBrowser.openBrowserAsync(url);
+      refetchBalance();
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to open offramp."
+      );
+    } finally {
+      setTransferLoading(false);
     }
   };
 
@@ -133,8 +156,16 @@ export default function MeScreen() {
             </Text>
           </View>
           <View style={styles.balanceActions}>
-            <TouchableOpacity style={styles.transferButton}>
-              <Text style={styles.transferText}>Transfer</Text>
+            <TouchableOpacity
+              style={[styles.transferButton, transferLoading && styles.transferButtonDisabled]}
+              onPress={handleTransfer}
+              disabled={transferLoading}
+            >
+              {transferLoading ? (
+                <ActivityIndicator color="#008CFF" size="small" />
+              ) : (
+                <Text style={styles.transferText}>Transfer</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.addMoneyButton, addMoneyLoading && styles.addMoneyButtonDisabled]}
@@ -299,6 +330,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#008CFF",
+  },
+  transferButtonDisabled: {
+    opacity: 0.6,
   },
   addMoneyButton: {
     flex: 1,
