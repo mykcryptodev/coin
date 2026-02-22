@@ -6,8 +6,6 @@ import {
   Alert,
   View,
   Text,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -15,6 +13,7 @@ import { useSendUsdc, useCurrentUser } from "@coinbase/cdp-hooks";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { NumberInput } from "@/components/family-numpad";
 
 function isEmail(input: string): boolean {
   return input.includes("@") && !input.startsWith("0x");
@@ -103,10 +102,7 @@ export default function PayScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pay/Request</Text>
         <TouchableOpacity onPress={() => router.push("/qr")}>
@@ -134,15 +130,10 @@ export default function PayScreen() {
       </View>
 
       <View style={styles.amountSection}>
-        <Text style={styles.dollarSign}>$</Text>
-        <TextInput
-          style={styles.amountInput}
-          placeholder="0"
-          placeholderTextColor="#ccc"
+        <NumberInput
           value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-          editable={!loading}
+          onValueChange={setAmount}
+          prefix="$"
         />
       </View>
 
@@ -174,7 +165,7 @@ export default function PayScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -218,21 +209,6 @@ const styles = StyleSheet.create({
   },
   amountSection: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-  dollarSign: {
-    fontSize: 48,
-    fontWeight: "300",
-    color: "#11181C",
-  },
-  amountInput: {
-    fontSize: 48,
-    fontWeight: "700",
-    color: "#11181C",
-    minWidth: 40,
-    textAlign: "center",
   },
   noteSection: {
     paddingHorizontal: 20,
