@@ -11,10 +11,15 @@ function normalizeUsername(input: string): string {
 export const getByWalletAddress = query({
   args: { walletAddress: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const user = await ctx.db
       .query("users")
       .withIndex("by_walletAddress", (q) => q.eq("walletAddress", args.walletAddress))
       .first();
+    if (!user) return null;
+    const avatarUrl = user.avatarStorageId
+      ? await ctx.storage.getUrl(user.avatarStorageId)
+      : null;
+    return { ...user, avatarUrl };
   },
 });
 
@@ -97,5 +102,79 @@ export const setUsername = mutation({
     }
 
     return normalized;
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const updateAvatar = mutation({
+  args: {
+    cdpUserId: v.string(),
+    walletAddress: v.string(),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_cdpUserId", (q) => q.eq("cdpUserId", args.cdpUserId))
+      .first();
+
+    if (existingUser) {
+      if (existingUser.avatarStorageId) {
+        await ctx.storage.delete(existingUser.avatarStorageId);
+      }
+      await ctx.db.patch(existingUser._id, {
+        avatarStorageId: args.storageId,
+      });
+    } else {
+      await ctx.db.insert("users", {
+        cdpUserId: args.cdpUserId,
+        username: "",
+        walletAddress: args.walletAddress,
+        avatarStorageId: args.storageId,
+      });
+    }
+  },
+});
+
+export const getUserAvatars = query({
+  args: { addresses: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const results: Record<
+      string,
+      { avatarUrl: string | null; username: string | null } | null
+    > = {};
+
+    await Promise.all(
+      args.addresses.map(async (address) => {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("by_walletAddress", (q) =>
+            q.eq("walletAddress", address)
+          )
+          .first();
+
+        if (!user) {
+          results[address] = null;
+          return;
+        }
+
+        const avatarUrl = user.avatarStorageId
+          ? await ctx.storage.getUrl(user.avatarStorageId)
+          : null;
+
+        results[address] = {
+          avatarUrl,
+          username: user.username || null,
+        };
+      })
+    );
+
+    return results;
   },
 });
