@@ -2,6 +2,7 @@ import { useState } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useVerifyEmailOTP } from "@coinbase/cdp-hooks";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -25,7 +26,14 @@ export default function VerifyScreen() {
     setLoading(true);
     try {
       await verifyEmailOTP({ flowId, otp });
-      router.replace("/(tabs)");
+      const hasCompletedOnboarding = await AsyncStorage.getItem(
+        "@coin-expo/onboarding-completed"
+      );
+      if (hasCompletedOnboarding === "true") {
+        router.replace("/(tabs)");
+      } else {
+        router.replace("/(onboarding)");
+      }
     } catch (error) {
       Alert.alert(
         "Error",
