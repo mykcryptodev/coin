@@ -1,6 +1,34 @@
+import { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+function useUsdcBalance(address: string | null) {
+  const [balance, setBalance] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const getUsdcBalance = useAction(api.cdp.getUsdcBalance);
+
+  const fetchBalance = useCallback(async () => {
+    if (!address) return;
+    setLoading(true);
+    try {
+      const result = await getUsdcBalance({ address });
+      setBalance(result);
+    } catch {
+      setBalance(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [address, getUsdcBalance]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  return { balance, loading, refetch: fetchBalance };
+}
 
 function shortenAddress(address: string): string {
   if (address.length <= 13) return address;
@@ -19,6 +47,8 @@ export default function MeScreen() {
     currentUser?.evmSmartAccounts?.[0] ??
     currentUser?.evmAccounts?.[0] ??
     null;
+
+  const { balance, loading: balanceLoading } = useUsdcBalance(walletAddress);
 
   const handleSignOut = async () => {
     try {
@@ -71,8 +101,12 @@ export default function MeScreen() {
           <Text style={styles.balanceLabel}>Balance</Text>
           <View style={styles.balanceRow}>
             <Text style={styles.balanceDollar}>$</Text>
-            <Text style={styles.balanceAmount}>0</Text>
-            <Text style={styles.balanceCents}>.00</Text>
+            <Text style={styles.balanceAmount}>
+              {balanceLoading ? "—" : (balance?.split(".")[0] ?? "0")}
+            </Text>
+            <Text style={styles.balanceCents}>
+              .{balanceLoading ? "——" : (balance?.split(".")[1] ?? "00")}
+            </Text>
           </View>
           <View style={styles.balanceActions}>
             <TouchableOpacity style={styles.transferButton}>

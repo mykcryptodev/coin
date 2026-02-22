@@ -4,14 +4,46 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { CdpClient } from "@coinbase/cdp-sdk";
 
+function getCdpClient() {
+  return new CdpClient({
+    apiKeyId: process.env.CDP_API_KEY_ID,
+    apiKeySecret: process.env.CDP_API_KEY_SECRET,
+    walletSecret: process.env.CDP_WALLET_SECRET,
+  });
+}
+
+export const getUsdcBalance = action({
+  args: { address: v.string() },
+  handler: async (ctx, args): Promise<string> => {
+    const cdp = getCdpClient();
+    let pageToken: string | undefined;
+    do {
+      const result = await cdp.evm.listTokenBalances({
+        address: args.address as `0x${string}`,
+        network: "base",
+        ...(pageToken ? { pageToken } : {}),
+      });
+      const usdc = result.balances.find(
+        (b) => b.token.contractAddress?.toLowerCase() === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+      );
+      if (usdc) {
+        const raw = BigInt(usdc.amount.amount);
+        const decimals = usdc.amount.decimals;
+        const divisor = 10n ** BigInt(decimals);
+        const whole = raw / divisor;
+        const frac = (raw % divisor).toString().padStart(decimals, "0").slice(0, 2);
+        return `${whole}.${frac}`;
+      }
+      pageToken = result.nextPageToken;
+    } while (pageToken);
+    return "0.00";
+  },
+});
+
 export const resolveRecipient = action({
   args: { email: v.string() },
   handler: async (ctx, args): Promise<string> => {
-    const cdp = new CdpClient({
-      apiKeyId: process.env.CDP_API_KEY_ID,
-      apiKeySecret: process.env.CDP_API_KEY_SECRET,
-      walletSecret: process.env.CDP_WALLET_SECRET,
-    });
+    const cdp = getCdpClient();
 
     try {
       const endUser = await cdp.endUser.createEndUser({
