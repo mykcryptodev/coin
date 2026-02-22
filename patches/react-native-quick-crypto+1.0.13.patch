@@ -1,0 +1,43 @@
+diff --git a/cpp/ec/HybridEcKeyPair.cpp b/cpp/ec/HybridEcKeyPair.cpp
+index 1234567..abcdefg 100644
+--- a/cpp/ec/HybridEcKeyPair.cpp
++++ b/cpp/ec/HybridEcKeyPair.cpp
+@@ -4,6 +4,7 @@
+ #include <openssl/bio.h>
+ #include <openssl/buffer.h>
+ #include <openssl/ec.h>
++#include <openssl/ecdsa.h>
+ #include <openssl/err.h>
+ #include <openssl/evp.h>
+ #include <openssl/obj_mac.h>
+@@ -369,8 +370,28 @@ std::shared_ptr<ArrayBuffer> HybridEcKeyPair::sign(const std::shared_ptr<ArrayBu
+   // Resize to actual signature length
+   signature.resize(sig_len);
+
+-  // Convert to ArrayBuffer
+-  return ToNativeArrayBuffer(std::string(signature.begin(), signature.end()));
++  // Convert DER signature to IEEE P1363 format (r || s) as required by Web Crypto API
++  const unsigned char* sig_ptr = signature.data();
++  ECDSA_SIG* ecdsa_sig = d2i_ECDSA_SIG(nullptr, &sig_ptr, static_cast<long>(sig_len));
++  if (ecdsa_sig) {
++    const BIGNUM* r_bn = nullptr;
++    const BIGNUM* s_bn = nullptr;
++    ECDSA_SIG_get0(ecdsa_sig, &r_bn, &s_bn);
++
++    // Determine the byte size of each component based on the key's curve
++    int key_bits = EVP_PKEY_bits(this->pkey);
++    unsigned int n = (key_bits + 7) / 8;
++
++    std::vector<uint8_t> p1363(2 * n, 0);
++    BN_bn2binpad(r_bn, p1363.data(), n);
++    BN_bn2binpad(s_bn, p1363.data() + n, n);
++
++    ECDSA_SIG_free(ecdsa_sig);
++    return ToNativeArrayBuffer(std::string(p1363.begin(), p1363.end()));
++  }
++
++  // Fallback: return DER if conversion fails
++  return ToNativeArrayBuffer(std::string(signature.begin(), signature.end()));
+ }
+
+ bool HybridEcKeyPair::verify(const std::shared_ptr<ArrayBuffer>& data, const std::shared_ptr<ArrayBuffer>& signature,
