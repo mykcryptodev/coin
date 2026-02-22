@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { useMemo } from 'react';
 import Color from 'color';
-import { PressableScale } from 'pressto';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -30,8 +29,9 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   }, [colorFromStatusMap, status]);
 
   return (
-    <PressableScale onPress={onPress} layout={LinearTransition.springify()}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
       <Animated.View
+        layout={LinearTransition.springify()}
         style={[
           {
             flexDirection: 'row',
@@ -51,7 +51,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
           {titleFromStatusMap?.[status] ?? ''}
         </Animated.Text>
       </Animated.View>
-    </PressableScale>
+    </TouchableOpacity>
   );
 };
 

@@ -115,11 +115,11 @@ export default function PayScreen() {
         setTo("");
         setAmount("");
         setNote("");
-      }, 2000);
+      }, 5000);
     } catch (e) {
       resetTimeoutRef.current = setTimeout(() => {
         // Form stays filled on error so user can retry
-      }, 2000);
+      }, 5000);
     }
   };
 
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   },
   payButton: {
     flex: 1,
-    height: 56,
+    paddingVertical: 16,
     borderRadius: 24,
     overflow: "hidden",
   },
