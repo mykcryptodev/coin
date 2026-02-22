@@ -94,21 +94,31 @@ export default function NotionQRAnimation({
 
   return (
     <View style={styles.container}>
-      <Canvas style={styles.canvas}>
-        <Picture picture={picture} />
-      </Canvas>
+      <View style={styles.canvasWrapper}>
+        <Canvas style={styles.canvas}>
+          <Picture picture={picture} />
+        </Canvas>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  canvas: {
-    height: CANVAS_HEIGHT,
-    position: 'absolute',
-    width: CANVAS_WIDTH,
-  },
   container: {
     backgroundColor: '#f5f5f5',
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  canvasWrapper: {
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+    position: 'absolute',
+    top: '50%',
+    marginTop: -CANVAS_HEIGHT / 2,
+  },
+  canvas: {
+    height: CANVAS_HEIGHT,
+    width: CANVAS_WIDTH,
   },
 });

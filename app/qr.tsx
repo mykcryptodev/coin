@@ -120,7 +120,6 @@ export default function QRScreen() {
           {erc681Uri ? (
             <>
               <NotionQRAnimation
-                key={`qr-${tab}`}
                 qrData={erc681Uri}
                 qrTargetHeight={220}
               />
@@ -248,14 +247,13 @@ const styles = StyleSheet.create({
   },
   payMeContainer: {
     flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     overflow: "hidden",
   },
   payMeOverlay: {
-    position: "absolute",
-    bottom: 40,
-    left: 0,
-    right: 0,
     alignItems: "center",
+    paddingTop: 16,
   },
   addressLabel: {
     fontSize: 16,
