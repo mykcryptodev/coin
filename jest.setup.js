@@ -1,3 +1,14 @@
+jest.mock('expo-clipboard', () => ({
+  getStringAsync: jest.fn(() => Promise.resolve('')),
+}));
+
+jest.mock('react-native-keyboard-controller', () => ({
+  useReanimatedKeyboardAnimation: () => ({
+    height: { value: 0 },
+    progress: { value: 0 },
+  }),
+}));
+
 jest.mock('@shopify/react-native-skia', () => {
   const React = require('react');
   const Fragment = React.Fragment;
