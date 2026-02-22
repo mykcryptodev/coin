@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -14,6 +14,7 @@ import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NumberInput } from "@/components/family-numpad";
+import { LoadingButton } from "@/components/loading-button";
 
 function isEmail(input: string): boolean {
   return input.includes("@") && !input.startsWith("0x");
@@ -25,8 +26,9 @@ export default function PayScreen() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [resolving, setResolving] = useState(false);
+  const [sendState, setSendState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const { currentUser } = useCurrentUser();
-  const { sendUsdc, status } = useSendUsdc();
+  const { sendUsdc } = useSendUsdc();
   const router = useRouter();
 
   useEffect(() => {
@@ -40,7 +42,16 @@ export default function PayScreen() {
     currentUser?.evmAccounts?.[0] ??
     null;
 
-  const loading = status === "pending" || resolving;
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+    };
+  }, []);
+
+  const buttonTitle = sendState === "loading" ? "Sending..." : sendState === "success" ? "Sent!" : sendState === "error" ? "Failed" : "Pay";
+  const loading = sendState === "loading";
 
   const handleSend = async () => {
     const recipient = to.trim();
@@ -52,6 +63,9 @@ export default function PayScreen() {
       Alert.alert("Error", "Please enter a valid amount.");
       return;
     }
+
+    if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+    setSendState("loading");
 
     try {
       let resolvedAddress: string;
@@ -84,20 +98,18 @@ export default function PayScreen() {
         ...(recipientEmail ? { recipientEmail } : {}),
       });
 
-      Alert.alert(
-        "Success",
-        recipientEmail
-          ? `Sent $${amount} USDC to ${recipientEmail}`
-          : `Sent $${amount} USDC`
-      );
-      setTo("");
-      setAmount("");
-      setNote("");
+      setSendState("success");
+      resetTimeoutRef.current = setTimeout(() => {
+        setTo("");
+        setAmount("");
+        setNote("");
+        setSendState("idle");
+      }, 5000);
     } catch (e) {
-      Alert.alert(
-        "Error",
-        e instanceof Error ? e.message : "Failed to send USDC."
-      );
+      setSendState("error");
+      resetTimeoutRef.current = setTimeout(() => {
+        setSendState("idle");
+      }, 5000);
     }
   };
 
@@ -155,15 +167,23 @@ export default function PayScreen() {
         >
           <Text style={styles.requestButtonText}>Request</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.payButton, loading && styles.buttonDisabled]}
-          onPress={handleSend}
-          disabled={loading}
-        >
-          <Text style={styles.payButtonText}>
-            {resolving ? "Resolving..." : status === "pending" ? "Sending..." : "Pay"}
-          </Text>
-        </TouchableOpacity>
+        <LoadingButton
+          status={sendState}
+          onPress={sendState === "idle" ? handleSend : undefined}
+          style={styles.payButton}
+          colorFromStatusMap={{
+            idle: "#008CFF",
+            loading: "#008CFF",
+            success: "#34C759",
+            error: "#FF3B30",
+          }}
+          titleFromStatusMap={{
+            idle: buttonTitle,
+            loading: buttonTitle,
+            success: buttonTitle,
+            error: buttonTitle,
+          }}
+        />
       </View>
     </View>
   );
@@ -243,15 +263,9 @@ const styles = StyleSheet.create({
   },
   payButton: {
     flex: 1,
-    backgroundColor: "#008CFF",
-    borderRadius: 24,
     paddingVertical: 16,
-    alignItems: "center",
-  },
-  payButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
+    borderRadius: 24,
+    overflow: "hidden",
   },
   buttonDisabled: {
     opacity: 0.6,
