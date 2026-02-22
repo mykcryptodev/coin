@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
 });
 
 export const VerificationCode = forwardRef<VerificationCodeRef, VerificationCodeProps>(
-  ({ code, maxLength = 6, status, onCodeChange, onCodeComplete, editable = true }, ref) => {
+  function VerificationCode({ code, maxLength = 6, status, onCodeChange, onCodeComplete, editable = true }, ref) {
     const textInputRef = useRef<TextInput>(null);
     const { shake, rShakeStyle } = useAnimatedShake();
 

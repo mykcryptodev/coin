@@ -1,5 +1,4 @@
-import { render, fireEvent } from '@testing-library/react-native';
-import { renderHook } from '@testing-library/react-native';
+import { render, fireEvent, renderHook } from '@testing-library/react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useAnimatedShake } from '../hooks/use-animated-shake';
 import { AnimatedCodeNumber } from '../AnimatedCodeNumber';
