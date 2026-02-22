@@ -85,6 +85,69 @@ export const createOnrampUrl = action({
   },
 });
 
+export const createOfframpUrl = action({
+  args: { address: v.string() },
+  handler: async (ctx, args): Promise<string> => {
+    const apiKeyId = process.env.CDP_API_KEY_ID!;
+    const apiKeySecret = process.env.CDP_API_KEY_SECRET!;
+
+    const ipResp = await fetch("https://api64.ipify.org?format=json");
+    if (!ipResp.ok) {
+      throw new Error(`Failed to fetch client IP (${ipResp.status})`);
+    }
+    const { ip: clientIp } = (await ipResp.json()) as { ip: string };
+
+    const requestMethod = "POST";
+    const requestHost = "api.developer.coinbase.com";
+    const requestPath = "/onramp/v1/token";
+    const body = {
+      addresses: [
+        {
+          address: args.address,
+          blockchains: ["base"],
+        },
+      ],
+      clientIp,
+    };
+
+    const headers = await getAuthHeaders({
+      apiKeyId,
+      apiKeySecret,
+      requestMethod,
+      requestHost,
+      requestPath,
+      requestBody: body,
+    });
+
+    const resp = await fetch(`https://${requestHost}${requestPath}`, {
+      method: requestMethod,
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`Offramp session token failed (${resp.status}): ${text}`);
+    }
+
+    const data = await resp.json();
+    const token = data.data?.token;
+    if (!token) {
+      throw new Error("No session token returned from API");
+    }
+
+    const params = new URLSearchParams({
+      sessionToken: token,
+      partnerUserRef: args.address,
+      redirectUrl: "coinexpotemp://",
+      defaultAsset: "USDC",
+      defaultNetwork: "base",
+    });
+
+    return `https://pay.coinbase.com/v3/sell/input?${params.toString()}`;
+  },
+});
+
 export const resolveRecipient = action({
   args: { email: v.string() },
   handler: async (ctx, args): Promise<string> => {
