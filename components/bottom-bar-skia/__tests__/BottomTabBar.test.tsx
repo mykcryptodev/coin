@@ -1,13 +1,11 @@
+import { BottomTabBar } from '../BottomTabBar';
+
 describe('BottomTabBar Module', () => {
-  it('should export BottomTabBar', () => {
-    const module = require('../BottomTabBar');
-    expect(module.BottomTabBar).toBeDefined();
-    expect(typeof module.BottomTabBar).toBe('function');
+  it('exports BottomTabBar as a defined value', () => {
+    expect(BottomTabBar).toBeDefined();
   });
 
-  it('should export BottomTabBar as a React component', () => {
-    const module = require('../BottomTabBar');
-    const displayName = module.BottomTabBar.displayName || module.BottomTabBar.name;
-    expect(displayName).toBeDefined();
+  it('exports BottomTabBar as a function', () => {
+    expect(typeof BottomTabBar).toBe('function');
   });
 });
