@@ -12,6 +12,7 @@ import type * as cdp from "../cdp.js";
 import type * as comments from "../comments.js";
 import type * as reactions from "../reactions.js";
 import type * as transactions from "../transactions.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   comments: typeof comments;
   reactions: typeof reactions;
   transactions: typeof transactions;
+  users: typeof users;
 }>;
 
 /**

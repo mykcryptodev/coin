@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable, TextInput } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
-import { useAction } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
@@ -61,7 +61,28 @@ export default function MeScreen() {
     currentUser?.evmAccounts?.[0] ??
     null;
 
+  const userProfile = useQuery(api.users.getByWalletAddress, walletAddress ? { walletAddress } : "skip");
+
   const { balance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(walletAddress);
+
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [debouncedUsername, setDebouncedUsername] = useState("");
+
+  const setUsername = useMutation(api.users.setUsername);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUsername(usernameInput);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [usernameInput]);
+
+  const usernameAvailability = useQuery(
+    api.users.checkUsernameAvailable,
+    debouncedUsername.length >= 3 ? { username: debouncedUsername } : "skip"
+  );
 
   const createOnrampUrl = useAction(api.cdp.createOnrampUrl);
   const [addMoneyLoading, setAddMoneyLoading] = useState(false);
@@ -133,6 +154,130 @@ export default function MeScreen() {
               {walletAddress ?? "No wallet found"}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.balanceLabel}>Username</Text>
+          </View>
+
+          {!editingUsername ? (
+            <>
+              {userProfile?.username ? (
+                <View style={styles.usernameRow}>
+                  <Text style={styles.usernameText}>@{userProfile.username}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setUsernameInput(userProfile.username || "");
+                      setEditingUsername(true);
+                    }}
+                  >
+                    <MaterialIcons name="edit" size={20} color="#008CFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.usernameRow}>
+                  <Text style={{ fontSize: 16, color: "#687076" }}>Set your @username</Text>
+                  <TouchableOpacity
+                    style={styles.setUsernameButton}
+                    onPress={() => {
+                      setUsernameInput("");
+                      setEditingUsername(true);
+                    }}
+                  >
+                    <Text style={styles.setUsernameText}>Set</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              <View style={styles.usernameInputRow}>
+                <Text style={styles.usernamePrefix}>@</Text>
+                <TextInput
+                  style={styles.usernameTextInput}
+                  placeholder="username"
+                  placeholderTextColor="#ccc"
+                  value={usernameInput}
+                  onChangeText={setUsernameInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {usernameInput.length >= 3 && debouncedUsername !== usernameInput && (
+                <View style={{ marginTop: 6, marginLeft: 4 }}>
+                  <ActivityIndicator size="small" color="#008CFF" />
+                </View>
+              )}
+
+              {usernameInput.length >= 3 && debouncedUsername === usernameInput && (
+                <Text
+                  style={[
+                    styles.availabilityText,
+                    { color: usernameAvailability?.available ? "#34C759" : "#ff3b30" },
+                  ]}
+                >
+                  {usernameAvailability?.available
+                    ? "✓ Available"
+                    : usernameAvailability?.error || "Not available"}
+                </Text>
+              )}
+
+              <View style={styles.usernameActions}>
+                <TouchableOpacity
+                  style={[styles.transferButton, { flex: 1 }]}
+                  onPress={() => {
+                    setEditingUsername(false);
+                    setUsernameInput("");
+                  }}
+                >
+                  <Text style={styles.transferText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.addMoneyButton,
+                    { flex: 1 },
+                    (usernameSaving ||
+                      usernameInput.length < 3 ||
+                      usernameAvailability?.available === false) &&
+                      styles.addMoneyButtonDisabled,
+                  ]}
+                  onPress={async () => {
+                    if (!currentUser?.userId || !walletAddress) return;
+                    setUsernameSaving(true);
+                    try {
+                      await setUsername({
+                        cdpUserId: currentUser.userId,
+                        username: usernameInput,
+                        walletAddress: walletAddress,
+                      });
+                      setEditingUsername(false);
+                      setUsernameInput("");
+                    } catch (e) {
+                      Alert.alert(
+                        "Error",
+                        e instanceof Error ? e.message : "Failed to set username."
+                      );
+                    } finally {
+                      setUsernameSaving(false);
+                    }
+                  }}
+                  disabled={
+                    usernameSaving ||
+                    usernameInput.length < 3 ||
+                    usernameAvailability?.available === false
+                  }
+                >
+                  {usernameSaving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.addMoneyText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -391,5 +536,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#11181C",
     fontWeight: "500",
+  },
+  usernameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  usernameText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#008CFF",
+  },
+  usernameInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  usernamePrefix: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#687076",
+    marginRight: 2,
+  },
+  usernameTextInput: {
+    flex: 1,
+    fontSize: 18,
+    color: "#11181C",
+  },
+  availabilityText: {
+    fontSize: 13,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  usernameActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  setUsernameButton: {
+    borderWidth: 1.5,
+    borderColor: "#008CFF",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  setUsernameText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#008CFF",
   },
 });

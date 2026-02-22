@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSendUsdc, useCurrentUser } from "@coinbase/cdp-hooks";
-import { useMutation, useAction } from "convex/react";
+import { useMutation, useAction, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NumberInput } from "@/components/family-numpad";
@@ -18,6 +18,10 @@ import { LoadingButton } from "@/components/loading-button";
 
 function isEmail(input: string): boolean {
   return input.includes("@") && !input.startsWith("0x");
+}
+
+function isUsername(input: string): boolean {
+  return /^@[a-z0-9_]+$/i.test(input);
 }
 
 export default function PayScreen() {
@@ -30,6 +34,7 @@ export default function PayScreen() {
   const { currentUser } = useCurrentUser();
   const { sendUsdc } = useSendUsdc();
   const router = useRouter();
+  const convex = useConvex();
 
   useEffect(() => {
     if (address) setTo(address);
@@ -70,8 +75,23 @@ export default function PayScreen() {
     try {
       let resolvedAddress: string;
       let recipientEmail: string | undefined;
+      let recipientUsername: string | undefined;
 
-      if (isEmail(recipient)) {
+      if (isUsername(recipient)) {
+        const usernameToLookup = recipient.slice(1).toLowerCase();
+        setResolving(true);
+        try {
+          const user = await convex.query(api.users.getByUsername, { username: usernameToLookup });
+          if (!user) {
+            Alert.alert("Error", "Username not found");
+            return;
+          }
+          resolvedAddress = user.walletAddress;
+          recipientUsername = usernameToLookup;
+        } finally {
+          setResolving(false);
+        }
+      } else if (isEmail(recipient)) {
         recipientEmail = recipient;
         setResolving(true);
         try {
@@ -96,6 +116,7 @@ export default function PayScreen() {
         amount: Number(amount.trim()),
         note: note.trim() || "USDC payment",
         ...(recipientEmail ? { recipientEmail } : {}),
+        ...(recipientUsername ? { recipientUsername } : {}),
       });
 
       setSendState("success");
@@ -127,7 +148,7 @@ export default function PayScreen() {
           <MaterialIcons name="person" size={20} color="#008CFF" />
           <TextInput
             style={styles.recipientInput}
-            placeholder="Email or 0x address..."
+            placeholder="@username, email, or 0x address..."
             placeholderTextColor="#999"
             value={to}
             onChangeText={setTo}

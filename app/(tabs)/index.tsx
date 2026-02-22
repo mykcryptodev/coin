@@ -56,6 +56,7 @@ type Transaction = {
   note: string;
   timestamp: number;
   recipientEmail?: string;
+  recipientUsername?: string;
 };
 
 function TransactionItem({
@@ -98,7 +99,9 @@ function TransactionItem({
                 </Text>
                 <Text style={styles.feedAction}> paid </Text>
                 <Text style={styles.feedName}>
-                  {item.recipientEmail ?? shortenAddress(item.to)}
+                   {item.recipientUsername
+                     ? `@${item.recipientUsername}`
+                     : item.recipientEmail ?? shortenAddress(item.to)}
                 </Text>
               </View>
             </View>
