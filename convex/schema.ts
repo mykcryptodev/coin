@@ -10,4 +10,10 @@ export default defineSchema({
     timestamp: v.number(),
     recipientEmail: v.optional(v.string()),
   }).index("by_timestamp", ["timestamp"]),
+  reactions: defineTable({
+    transactionId: v.id("transactions"),
+    userId: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_transaction_and_user", ["transactionId", "userId"]),
 });

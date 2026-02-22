@@ -9,6 +9,7 @@
  */
 
 import type * as cdp from "../cdp.js";
+import type * as reactions from "../reactions.js";
 import type * as transactions from "../transactions.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   cdp: typeof cdp;
+  reactions: typeof reactions;
   transactions: typeof transactions;
 }>;
 

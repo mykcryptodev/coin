@@ -1,8 +1,10 @@
 import { StyleSheet, View, FlatList, TextInput, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useCurrentUser } from "@coinbase/cdp-hooks";
+import { HeartButton } from "@/components/HeartButton";
 
 function getInitials(address: string): string {
   return address.slice(2, 4).toUpperCase();
@@ -53,7 +55,7 @@ type Transaction = {
   recipientEmail?: string;
 };
 
-function TransactionItem({ item }: { item: Transaction }) {
+function TransactionItem({ item, isLiked, onToggleLike }: { item: Transaction; isLiked: boolean; onToggleLike: () => void }) {
   return (
     <View style={styles.feedItem}>
       <View
@@ -89,7 +91,7 @@ function TransactionItem({ item }: { item: Transaction }) {
         <Text style={styles.feedAmount}>${item.amount.toFixed(2)} USDC</Text>
         {item.note ? <Text style={styles.feedNote}>{item.note}</Text> : null}
         <View style={styles.feedActions}>
-          <MaterialIcons name="favorite-border" size={18} color="#687076" />
+          <HeartButton isLiked={isLiked} onToggle={onToggleLike} size={18} />
           <MaterialIcons
             name="chat-bubble-outline"
             size={18}
@@ -105,6 +107,13 @@ function TransactionItem({ item }: { item: Transaction }) {
 export default function HomeScreen() {
   const transactions = useQuery(api.transactions.get);
   const router = useRouter();
+  const { currentUser } = useCurrentUser();
+  const toggleLike = useMutation(api.reactions.toggleLike);
+  const userReactions = useQuery(
+    api.reactions.getUserReactions,
+    currentUser?.userId ? { userId: currentUser.userId } : "skip"
+  );
+  const likedIds = new Set(userReactions?.map((r) => r.transactionId) ?? []);
 
   return (
     <View style={styles.container}>
@@ -132,7 +141,17 @@ export default function HomeScreen() {
       <FlatList
         data={transactions ?? []}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <TransactionItem item={item} />}
+        renderItem={({ item }) => (
+          <TransactionItem
+            item={item}
+            isLiked={likedIds.has(item._id)}
+            onToggleLike={() => {
+              if (currentUser?.userId) {
+                toggleLike({ transactionId: item._id, userId: currentUser.userId });
+              }
+            }}
+          />
+        )}
         contentContainerStyle={styles.feedList}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -246,6 +265,7 @@ const styles = StyleSheet.create({
   feedActions: {
     flexDirection: "row",
     marginTop: 8,
+    overflow: "visible",
   },
   emptyState: {
     alignItems: "center",
