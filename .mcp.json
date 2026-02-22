@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "coinbase-developer-docs": {
+      "type": "http",
+      "url": "https://docs.cdp.coinbase.com/mcp"
+    },
+    "convex": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["convex", "mcp", "start", "--project-dir", "/Users/mikesolomon/Projects/coin"]
+    }
+  }
+}

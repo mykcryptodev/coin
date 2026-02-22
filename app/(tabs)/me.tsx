@@ -1,0 +1,270 @@
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView } from "react-native";
+import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+function shortenAddress(address: string): string {
+  if (address.length <= 13) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function getInitials(address: string): string {
+  return address.slice(2, 4).toUpperCase();
+}
+
+export default function MeScreen() {
+  const { currentUser } = useCurrentUser();
+  const { signOut } = useSignOut();
+
+  const walletAddress =
+    currentUser?.evmSmartAccounts?.[0] ??
+    currentUser?.evmAccounts?.[0] ??
+    null;
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to sign out."
+      );
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container} bounces={false}>
+      <View style={styles.blueHeader}>
+        <View style={styles.headerTopRow}>
+          <Text style={styles.headerLabel}>Personal</Text>
+          <MaterialIcons name="settings" size={24} color="#fff" />
+        </View>
+      </View>
+
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {walletAddress ? getInitials(walletAddress) : "?"}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.content}>
+        {walletAddress && (
+          <Text style={styles.addressLabel}>
+            {shortenAddress(walletAddress)}
+          </Text>
+        )}
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.balanceLabel}>Wallet</Text>
+          </View>
+          <View style={styles.addressRow}>
+            <MaterialIcons name="account-balance-wallet" size={20} color="#008CFF" />
+            <Text style={styles.fullAddress} selectable numberOfLines={1}>
+              {walletAddress ?? "No wallet found"}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.balanceLabel}>Balance</Text>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceDollar}>$</Text>
+            <Text style={styles.balanceAmount}>0</Text>
+            <Text style={styles.balanceCents}>.00</Text>
+          </View>
+          <View style={styles.balanceActions}>
+            <TouchableOpacity style={styles.transferButton}>
+              <Text style={styles.transferText}>Transfer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addMoneyButton}>
+              <Text style={styles.addMoneyText}>Add money</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {currentUser?.userId && (
+          <View style={styles.card}>
+            <Text style={styles.balanceLabel}>User ID</Text>
+            <Text style={styles.userId} selectable>
+              {currentUser.userId}
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <MaterialIcons name="logout" size={20} color="#ff3b30" />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  blueHeader: {
+    backgroundColor: "#008CFF",
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 60,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  headerLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginTop: -40,
+    marginBottom: 8,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#4ECDC4",
+    borderWidth: 4,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  addressLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#11181C",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e8e8e8",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#687076",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  fullAddress: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "monospace",
+    color: "#11181C",
+  },
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  balanceDollar: {
+    fontSize: 20,
+    fontWeight: "400",
+    color: "#11181C",
+    marginTop: 4,
+  },
+  balanceAmount: {
+    fontSize: 48,
+    fontWeight: "700",
+    color: "#11181C",
+    lineHeight: 52,
+  },
+  balanceCents: {
+    fontSize: 20,
+    fontWeight: "400",
+    color: "#11181C",
+    marginTop: 4,
+  },
+  balanceActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  transferButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#008CFF",
+    borderRadius: 24,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  transferText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#008CFF",
+  },
+  addMoneyButton: {
+    flex: 1,
+    backgroundColor: "#008CFF",
+    borderRadius: 24,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  addMoneyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  userId: {
+    fontSize: 14,
+    color: "#11181C",
+    marginTop: 8,
+  },
+  signOutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ff3b30",
+  },
+  signOutText: {
+    color: "#ff3b30",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
