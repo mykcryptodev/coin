@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSendUsdc, useCurrentUser } from "@coinbase/cdp-hooks";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -20,12 +21,18 @@ function isEmail(input: string): boolean {
 }
 
 export default function PayScreen() {
+  const { address } = useLocalSearchParams<{ address?: string }>();
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [resolving, setResolving] = useState(false);
   const { currentUser } = useCurrentUser();
   const { sendUsdc, status } = useSendUsdc();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (address) setTo(address);
+  }, [address]);
   const createTransaction = useMutation(api.transactions.create);
   const resolveRecipient = useAction(api.cdp.resolveRecipient);
 
@@ -102,6 +109,9 @@ export default function PayScreen() {
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pay/Request</Text>
+        <TouchableOpacity onPress={() => router.push("/qr")}>
+          <MaterialIcons name="qr-code-scanner" size={26} color="#11181C" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.recipientSection}>
@@ -174,6 +184,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 12,
