@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { CdpClient } from "@coinbase/cdp-sdk";
+import { getAuthHeaders } from "@coinbase/cdp-sdk/auth";
 
 function getCdpClient() {
   return new CdpClient({
@@ -37,6 +38,50 @@ export const getUsdcBalance = action({
       pageToken = result.nextPageToken;
     } while (pageToken);
     return "0.00";
+  },
+});
+
+export const createOnrampUrl = action({
+  args: { address: v.string() },
+  handler: async (ctx, args): Promise<string> => {
+    const apiKeyId = process.env.CDP_API_KEY_ID!;
+    const apiKeySecret = process.env.CDP_API_KEY_SECRET!;
+
+    const requestMethod = "POST";
+    const requestHost = "api.cdp.coinbase.com";
+    const requestPath = "/platform/v2/onramp/sessions";
+    const body = {
+      destinationAddress: args.address,
+      purchaseCurrency: "USDC",
+      destinationNetwork: "base",
+    };
+
+    const headers = await getAuthHeaders({
+      apiKeyId,
+      apiKeySecret,
+      requestMethod,
+      requestHost,
+      requestPath,
+      requestBody: body,
+    });
+
+    const resp = await fetch(`https://${requestHost}${requestPath}`, {
+      method: requestMethod,
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`Onramp session failed (${resp.status}): ${text}`);
+    }
+
+    const data = await resp.json();
+    const url = data.session?.onrampUrl;
+    if (!url) {
+      throw new Error("No onrampUrl returned from API");
+    }
+    return url;
   },
 });
 

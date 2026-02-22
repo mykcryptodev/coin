@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as WebBrowser from "expo-web-browser";
 
 function useUsdcBalance(address: string | null) {
   const [balance, setBalance] = useState<string | null>(null);
@@ -48,7 +49,30 @@ export default function MeScreen() {
     currentUser?.evmAccounts?.[0] ??
     null;
 
-  const { balance, loading: balanceLoading } = useUsdcBalance(walletAddress);
+  const { balance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(walletAddress);
+
+  const createOnrampUrl = useAction(api.cdp.createOnrampUrl);
+  const [addMoneyLoading, setAddMoneyLoading] = useState(false);
+
+  const handleAddMoney = async () => {
+    if (!walletAddress) {
+      Alert.alert("Error", "No wallet address found.");
+      return;
+    }
+    setAddMoneyLoading(true);
+    try {
+      const url = await createOnrampUrl({ address: walletAddress });
+      await WebBrowser.openBrowserAsync(url);
+      refetchBalance();
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to open onramp."
+      );
+    } finally {
+      setAddMoneyLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -112,8 +136,16 @@ export default function MeScreen() {
             <TouchableOpacity style={styles.transferButton}>
               <Text style={styles.transferText}>Transfer</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.addMoneyButton}>
-              <Text style={styles.addMoneyText}>Add money</Text>
+            <TouchableOpacity
+              style={[styles.addMoneyButton, addMoneyLoading && styles.addMoneyButtonDisabled]}
+              onPress={handleAddMoney}
+              disabled={addMoneyLoading}
+            >
+              {addMoneyLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.addMoneyText}>Add money</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -274,6 +306,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingVertical: 12,
     alignItems: "center",
+  },
+  addMoneyButtonDisabled: {
+    opacity: 0.6,
   },
   addMoneyText: {
     fontSize: 16,
