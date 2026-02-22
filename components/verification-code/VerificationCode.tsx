@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { type SharedValue } from 'react-native-reanimated';
 
 import { AnimatedCodeNumber, type StatusType } from './AnimatedCodeNumber';
@@ -23,8 +23,9 @@ type VerificationCodeProps = {
 const styles = StyleSheet.create({
   hiddenInput: {
     position: 'absolute',
-    bottom: -50,
-    opacity: 0,
+    width: 1,
+    height: 1,
+    opacity: 0.01,
   },
   codeContainer: {
     flexDirection: 'row',
@@ -32,6 +33,7 @@ const styles = StyleSheet.create({
   },
   digitWrapper: {
     flex: 1,
+    aspectRatio: 0.75,
   },
 });
 
@@ -66,12 +68,12 @@ export const VerificationCode = forwardRef<VerificationCodeRef, VerificationCode
       [maxLength, onCodeChange, onCodeComplete],
     );
 
-    const handleTouchEnd = useCallback(() => {
+    const handlePress = useCallback(() => {
       textInputRef.current?.focus();
     }, []);
 
     return (
-      <View>
+      <Pressable onPress={handlePress}>
         <TextInput
           testID="hidden-input"
           ref={textInputRef}
@@ -80,12 +82,10 @@ export const VerificationCode = forwardRef<VerificationCodeRef, VerificationCode
           maxLength={maxLength}
           autoFocus
           editable={editable}
+          caretHidden
           style={styles.hiddenInput}
         />
-        <Animated.View
-          style={[styles.codeContainer, rShakeStyle]}
-          onTouchEnd={handleTouchEnd}
-        >
+        <Animated.View style={[styles.codeContainer, rShakeStyle]}>
           {new Array(maxLength).fill(0).map((_, index) => (
             <View key={index} testID={`digit-box-${index}`} style={styles.digitWrapper}>
               <AnimatedCodeNumber
@@ -96,7 +96,7 @@ export const VerificationCode = forwardRef<VerificationCodeRef, VerificationCode
             </View>
           ))}
         </Animated.View>
-      </View>
+      </Pressable>
     );
   },
 );

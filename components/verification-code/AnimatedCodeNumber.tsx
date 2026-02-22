@@ -79,7 +79,6 @@ export const AnimatedCodeNumber: React.FC<AnimatedCodeNumberProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    aspectRatio: 0.95,
     borderWidth: 2,
     borderRadius: 8,
     justifyContent: 'center',
