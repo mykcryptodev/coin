@@ -16,4 +16,10 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_transaction_and_user", ["transactionId", "userId"]),
+  comments: defineTable({
+    transactionId: v.id("transactions"),
+    userId: v.string(),
+    text: v.string(),
+    createdAt: v.number(),
+  }).index("by_transactionId", ["transactionId"]),
 });

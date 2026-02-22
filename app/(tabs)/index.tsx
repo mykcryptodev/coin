@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { StyleSheet, View, FlatList, TextInput, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCurrentUser } from "@coinbase/cdp-hooks";
 import { HeartButton } from "@/components/HeartButton";
+import { CommentSection } from "@/components/CommentSection";
 
 function getInitials(address: string): string {
   return address.slice(2, 4).toUpperCase();
@@ -46,7 +49,7 @@ function shortenAddress(address: string): string {
 }
 
 type Transaction = {
-  _id: string;
+  _id: Id<"transactions">;
   from: string;
   to: string;
   amount: number;
@@ -55,7 +58,21 @@ type Transaction = {
   recipientEmail?: string;
 };
 
-function TransactionItem({ item, isLiked, onToggleLike }: { item: Transaction; isLiked: boolean; onToggleLike: () => void }) {
+function TransactionItem({
+  item,
+  isLiked,
+  onToggleLike,
+  currentUserId,
+  commentCount,
+}: {
+  item: Transaction;
+  isLiked: boolean;
+  onToggleLike: () => void;
+  currentUserId: string | undefined;
+  commentCount: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <View style={styles.feedItem}>
       <View
@@ -92,13 +109,28 @@ function TransactionItem({ item, isLiked, onToggleLike }: { item: Transaction; i
         {item.note ? <Text style={styles.feedNote}>{item.note}</Text> : null}
         <View style={styles.feedActions}>
           <HeartButton isLiked={isLiked} onToggle={onToggleLike} size={18} />
-          <MaterialIcons
-            name="chat-bubble-outline"
-            size={18}
-            color="#687076"
-            style={{ marginLeft: 16 }}
-          />
+          <TouchableOpacity
+            style={styles.commentButton}
+            onPress={() => setExpanded((prev) => !prev)}
+          >
+            <MaterialIcons
+              name={expanded ? "chat-bubble" : "chat-bubble-outline"}
+              size={18}
+              color={expanded ? "#008CFF" : "#687076"}
+            />
+            {commentCount > 0 && (
+              <Text style={[styles.commentCount, expanded && styles.commentCountActive]}>
+                {commentCount}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
+        {expanded && (
+          <CommentSection
+            transactionId={item._id}
+            currentUserId={currentUserId}
+          />
+        )}
       </View>
     </View>
   );
@@ -114,6 +146,7 @@ export default function HomeScreen() {
     currentUser?.userId ? { userId: currentUser.userId } : "skip"
   );
   const likedIds = new Set(userReactions?.map((r) => r.transactionId) ?? []);
+  const commentCounts = useQuery(api.comments.counts) ?? {};
 
   return (
     <View style={styles.container}>
@@ -141,6 +174,7 @@ export default function HomeScreen() {
       <FlatList
         data={transactions ?? []}
         keyExtractor={(item) => item._id}
+        extraData={currentUser?.userId}
         renderItem={({ item }) => (
           <TransactionItem
             item={item}
@@ -150,6 +184,8 @@ export default function HomeScreen() {
                 toggleLike({ transactionId: item._id, userId: currentUser.userId });
               }
             }}
+            currentUserId={currentUser?.userId}
+            commentCount={commentCounts[item._id] ?? 0}
           />
         )}
         contentContainerStyle={styles.feedList}
@@ -264,8 +300,22 @@ const styles = StyleSheet.create({
   },
   feedActions: {
     flexDirection: "row",
+    alignItems: "center",
     marginTop: 8,
     overflow: "visible",
+  },
+  commentButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 16,
+  },
+  commentCount: {
+    fontSize: 13,
+    color: "#687076",
+    marginLeft: 4,
+  },
+  commentCountActive: {
+    color: "#008CFF",
   },
   emptyState: {
     alignItems: "center",
