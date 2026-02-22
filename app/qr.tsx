@@ -8,8 +8,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import QRCode from "react-native-qrcode-svg";
 import { useCurrentUser } from "@coinbase/cdp-hooks";
+import NotionQRAnimation from "@/components/notion-qr-animation/index";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 type Tab = "scan" | "pay-me";
@@ -119,13 +119,16 @@ export default function QRScreen() {
         <View style={styles.payMeContainer}>
           {erc681Uri ? (
             <>
-              <View style={styles.qrBox}>
-                <QRCode value={erc681Uri} size={220} />
+              <NotionQRAnimation
+                qrData={erc681Uri}
+                qrTargetHeight={220}
+              />
+              <View style={styles.payMeOverlay}>
+                <Text style={styles.addressLabel}>
+                  {shortenAddress(walletAddress!)}
+                </Text>
+                <Text style={styles.networkLabel}>Base (USDC)</Text>
               </View>
-              <Text style={styles.addressLabel}>
-                {shortenAddress(walletAddress!)}
-              </Text>
-              <Text style={styles.networkLabel}>Base (USDC)</Text>
             </>
           ) : (
             <View style={styles.permissionBox}>
@@ -246,16 +249,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
-  qrBox: {
-    padding: 24,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+  payMeOverlay: {
+    alignItems: "center",
+    paddingTop: 16,
   },
   addressLabel: {
     fontSize: 16,
