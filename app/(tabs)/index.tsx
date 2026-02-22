@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { StyleSheet, View, FlatList, TextInput, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCurrentUser } from "@coinbase/cdp-hooks";
+import { Image } from "expo-image";
 import { HeartButton } from "@/components/HeartButton";
 import { CommentSection } from "@/components/CommentSection";
 
@@ -59,29 +60,44 @@ type Transaction = {
   recipientUsername?: string;
 };
 
-function TransactionItem({
+type AvatarData = { avatarUrl: string | null; username: string | null } | null;
+
+const TransactionItem = memo(function TransactionItem({
   item,
+  senderData,
   isLiked,
   onToggleLike,
   currentUserId,
   commentCount,
 }: {
   item: Transaction;
+  senderData: AvatarData;
   isLiked: boolean;
   onToggleLike: () => void;
   currentUserId: string | undefined;
   commentCount: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const senderDisplay = senderData?.username
+    ? `@${senderData.username}`
+    : shortenAddress(item.from);
 
   return (
     <View style={styles.feedItem}>
       <View
         style={[styles.avatar, { backgroundColor: getAvatarColor(item.from) }]}
       >
-        <View style={styles.avatarTextContainer}>
-          <MaterialIcons name="person" size={20} color="#fff" />
-        </View>
+        {senderData?.avatarUrl ? (
+          <Image
+            source={{ uri: senderData.avatarUrl }}
+            style={styles.avatarImage}
+            contentFit="cover"
+          />
+        ) : (
+          <View style={styles.avatarTextContainer}>
+            <MaterialIcons name="person" size={20} color="#fff" />
+          </View>
+        )}
       </View>
       <View style={styles.feedContent}>
         <View style={styles.feedHeader}>
@@ -94,9 +110,7 @@ function TransactionItem({
             />
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                <Text style={styles.feedName}>
-                  {shortenAddress(item.from)}
-                </Text>
+                <Text style={styles.feedName}>{senderDisplay}</Text>
                 <Text style={styles.feedAction}> paid </Text>
                 <Text style={styles.feedName}>
                    {item.recipientUsername
@@ -137,7 +151,7 @@ function TransactionItem({
       </View>
     </View>
   );
-}
+});
 
 export default function HomeScreen() {
   const transactions = useQuery(api.transactions.get);
@@ -150,6 +164,18 @@ export default function HomeScreen() {
   );
   const likedIds = new Set(userReactions?.map((r) => r.transactionId) ?? []);
   const commentCounts = useQuery(api.comments.counts) ?? {};
+
+  const uniqueSenderAddresses = useMemo(() => {
+    if (!transactions?.length) return [];
+    return [...new Set(transactions.map((t) => t.from))];
+  }, [transactions]);
+
+  const userAvatars = useQuery(
+    api.users.getUserAvatars,
+    uniqueSenderAddresses.length > 0
+      ? { addresses: uniqueSenderAddresses }
+      : "skip"
+  );
 
   return (
     <View style={styles.container}>
@@ -181,6 +207,7 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <TransactionItem
             item={item}
+            senderData={userAvatars?.[item.from] ?? null}
             isLiked={likedIds.has(item._id)}
             onToggleLike={() => {
               if (currentUser?.userId) {
@@ -258,6 +285,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
     marginTop: 2,
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   avatarTextContainer: {
     alignItems: "center",
