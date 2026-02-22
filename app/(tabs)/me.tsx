@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
 import { useAction } from "convex/react";
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as WebBrowser from "expo-web-browser";
+
+const ONBOARDING_KEY = '@coin-expo/onboarding-completed';
 
 function useUsdcBalance(address: string | null) {
   const [balance, setBalance] = useState<string | null>(null);
@@ -43,6 +47,14 @@ function getInitials(address: string): string {
 export default function MeScreen() {
   const { currentUser } = useCurrentUser();
   const { signOut } = useSignOut();
+  const router = useRouter();
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const handleStartOnboarding = async () => {
+    setMenuVisible(false);
+    await AsyncStorage.removeItem(ONBOARDING_KEY);
+    router.replace("/(onboarding)");
+  };
 
   const walletAddress =
     currentUser?.evmSmartAccounts?.[0] ??
@@ -90,8 +102,21 @@ export default function MeScreen() {
       <View style={styles.blueHeader}>
         <View style={styles.headerTopRow}>
           <Text style={styles.headerLabel}>Personal</Text>
-          <MaterialIcons name="settings" size={24} color="#fff" />
+          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+            <MaterialIcons name="settings" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
+
+        <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+          <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
+            <View style={styles.menuDropdown}>
+              <TouchableOpacity style={styles.menuItem} onPress={handleStartOnboarding}>
+                <MaterialIcons name="play-circle-outline" size={20} color="#11181C" />
+                <Text style={styles.menuItemText}>Start Onboarding</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
       </View>
 
       <View style={styles.avatarContainer}>
@@ -335,5 +360,36 @@ const styles = StyleSheet.create({
     color: "#ff3b30",
     fontSize: 16,
     fontWeight: "600",
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "flex-start",
+    alignItems: "flex-end",
+    paddingTop: 100,
+    paddingRight: 20,
+  },
+  menuDropdown: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 4,
+    minWidth: 200,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: "#11181C",
+    fontWeight: "500",
   },
 });
