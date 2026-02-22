@@ -26,8 +26,9 @@ export default function PayScreen() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [resolving, setResolving] = useState(false);
+  const [sendState, setSendState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const { currentUser } = useCurrentUser();
-  const { sendUsdc, status } = useSendUsdc();
+  const { sendUsdc } = useSendUsdc();
   const router = useRouter();
 
   useEffect(() => {
@@ -49,23 +50,8 @@ export default function PayScreen() {
     };
   }, []);
 
-  const buttonStatus = useMemo((): "idle" | "loading" | "success" | "error" => {
-    if (resolving) return "loading";
-    if (status === "pending") return "loading";
-    if (status === "success") return "success";
-    if (status === "error") return "error";
-    return "idle";
-  }, [resolving, status]);
-
-  const buttonTitle = useMemo((): string => {
-    if (resolving) return "Resolving...";
-    if (status === "pending") return "Sending...";
-    if (status === "success") return "Sent!";
-    if (status === "error") return "Failed";
-    return "Pay";
-  }, [resolving, status]);
-
-  const loading = buttonStatus === "loading";
+  const buttonTitle = sendState === "loading" ? "Sending..." : sendState === "success" ? "Sent!" : sendState === "error" ? "Failed" : "Pay";
+  const loading = sendState === "loading";
 
   const handleSend = async () => {
     const recipient = to.trim();
@@ -79,6 +65,7 @@ export default function PayScreen() {
     }
 
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+    setSendState("loading");
 
     try {
       let resolvedAddress: string;
@@ -111,14 +98,17 @@ export default function PayScreen() {
         ...(recipientEmail ? { recipientEmail } : {}),
       });
 
+      setSendState("success");
       resetTimeoutRef.current = setTimeout(() => {
         setTo("");
         setAmount("");
         setNote("");
+        setSendState("idle");
       }, 5000);
     } catch (e) {
+      setSendState("error");
       resetTimeoutRef.current = setTimeout(() => {
-        // Form stays filled on error so user can retry
+        setSendState("idle");
       }, 5000);
     }
   };
@@ -178,8 +168,8 @@ export default function PayScreen() {
           <Text style={styles.requestButtonText}>Request</Text>
         </TouchableOpacity>
         <LoadingButton
-          status={buttonStatus}
-          onPress={buttonStatus === "idle" ? handleSend : undefined}
+          status={sendState}
+          onPress={sendState === "idle" ? handleSend : undefined}
           style={styles.payButton}
           colorFromStatusMap={{
             idle: "#008CFF",

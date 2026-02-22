@@ -29,7 +29,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   }, [colorFromStatusMap, status]);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} disabled={!onPress} style={{ flex: 1 }}>
       <Animated.View
         layout={LinearTransition.springify()}
         style={[
