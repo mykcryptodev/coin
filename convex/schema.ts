@@ -8,5 +8,6 @@ export default defineSchema({
     amount: v.number(),
     note: v.string(),
     timestamp: v.number(),
+    recipientEmail: v.optional(v.string()),
   }).index("by_timestamp", ["timestamp"]),
 });

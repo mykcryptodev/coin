@@ -8,32 +8,38 @@ import {
   Text,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useSendUsdc, useCurrentUser } from "@coinbase/cdp-hooks";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+function isEmail(input: string): boolean {
+  return input.includes("@") && !input.startsWith("0x");
+}
 
 export default function PayScreen() {
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [resolving, setResolving] = useState(false);
   const { currentUser } = useCurrentUser();
   const { sendUsdc, status } = useSendUsdc();
   const createTransaction = useMutation(api.transactions.create);
+  const resolveRecipient = useAction(api.cdp.resolveRecipient);
 
   const senderAddress =
     currentUser?.evmSmartAccounts?.[0] ??
     currentUser?.evmAccounts?.[0] ??
     null;
 
-  const loading = status === "pending";
-
-  const displayAmount = amount || "0";
+  const loading = status === "pending" || resolving;
 
   const handleSend = async () => {
-    if (!to.trim()) {
-      Alert.alert("Error", "Please enter a recipient address.");
+    const recipient = to.trim();
+    if (!recipient) {
+      Alert.alert("Error", "Please enter a recipient email or address.");
       return;
     }
     if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -42,8 +48,23 @@ export default function PayScreen() {
     }
 
     try {
+      let resolvedAddress: string;
+      let recipientEmail: string | undefined;
+
+      if (isEmail(recipient)) {
+        recipientEmail = recipient;
+        setResolving(true);
+        try {
+          resolvedAddress = await resolveRecipient({ email: recipient });
+        } finally {
+          setResolving(false);
+        }
+      } else {
+        resolvedAddress = recipient;
+      }
+
       await sendUsdc({
-        to: to.trim() as `0x${string}`,
+        to: resolvedAddress as `0x${string}`,
         amount: amount.trim(),
         network: "base" as const,
         useCdpPaymaster: true,
@@ -51,12 +72,18 @@ export default function PayScreen() {
 
       await createTransaction({
         from: senderAddress ?? "unknown",
-        to: to.trim(),
+        to: resolvedAddress,
         amount: Number(amount.trim()),
         note: note.trim() || "USDC payment",
+        ...(recipientEmail ? { recipientEmail } : {}),
       });
 
-      Alert.alert("Success", `Sent $${amount} USDC`);
+      Alert.alert(
+        "Success",
+        recipientEmail
+          ? `Sent $${amount} USDC to ${recipientEmail}`
+          : `Sent $${amount} USDC`
+      );
       setTo("");
       setAmount("");
       setNote("");
@@ -82,7 +109,7 @@ export default function PayScreen() {
           <MaterialIcons name="person" size={20} color="#008CFF" />
           <TextInput
             style={styles.recipientInput}
-            placeholder="Enter 0x address..."
+            placeholder="Email or 0x address..."
             placeholderTextColor="#999"
             value={to}
             onChangeText={setTo}
@@ -90,6 +117,9 @@ export default function PayScreen() {
             autoCorrect={false}
             editable={!loading}
           />
+          {resolving && (
+            <ActivityIndicator size="small" color="#008CFF" />
+          )}
         </View>
       </View>
 
@@ -130,7 +160,7 @@ export default function PayScreen() {
           disabled={loading}
         >
           <Text style={styles.payButtonText}>
-            {loading ? "Sending..." : "Pay"}
+            {resolving ? "Resolving..." : status === "pending" ? "Sending..." : "Pay"}
           </Text>
         </TouchableOpacity>
       </View>

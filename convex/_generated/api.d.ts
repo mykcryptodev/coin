@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as cdp from "../cdp.js";
 import type * as transactions from "../transactions.js";
 
 import type {
@@ -17,6 +18,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  cdp: typeof cdp;
   transactions: typeof transactions;
 }>;
 
