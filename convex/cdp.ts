@@ -103,7 +103,8 @@ export const resolveRecipient = action({
       return smartAccount;
     } catch (e: any) {
       // If user already exists, look them up
-      if (e?.response?.status === 409 || String(e?.message).includes("409")) {
+      const msg = String(e?.message ?? "");
+      if (e?.response?.status === 409 || msg.includes("409") || msg.includes("already associated")) {
         const result = await cdp.endUser.listEndUsers();
         const users = result.endUsers ?? [];
         const match = users.find((u: any) =>
