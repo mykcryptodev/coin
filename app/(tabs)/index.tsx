@@ -1,4 +1,5 @@
-import { StyleSheet, View, FlatList, TextInput, Text } from "react-native";
+import { StyleSheet, View, FlatList, TextInput, Text, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -103,11 +104,15 @@ function TransactionItem({ item }: { item: Transaction }) {
 
 export default function HomeScreen() {
   const transactions = useQuery(api.transactions.get);
+  const router = useRouter();
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Activity</Text>
+        <TouchableOpacity onPress={() => router.push("/qr")}>
+          <MaterialIcons name="qr-code-scanner" size={26} color="#11181C" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
@@ -149,6 +154,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 12,
