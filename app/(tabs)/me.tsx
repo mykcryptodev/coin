@@ -106,17 +106,6 @@ export default function MeScreen() {
             <MaterialIcons name="settings" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
-
-        <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-          <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
-            <View style={styles.menuDropdown}>
-              <TouchableOpacity style={styles.menuItem} onPress={handleStartOnboarding}>
-                <MaterialIcons name="play-circle-outline" size={20} color="#11181C" />
-                <Text style={styles.menuItemText}>Start Onboarding</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Modal>
       </View>
 
       <View style={styles.avatarContainer}>
@@ -189,6 +178,17 @@ export default function MeScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
+          <View style={styles.menuDropdown}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleStartOnboarding}>
+              <MaterialIcons name="play-circle-outline" size={20} color="#11181C" />
+              <Text style={styles.menuItemText}>Start Onboarding</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
