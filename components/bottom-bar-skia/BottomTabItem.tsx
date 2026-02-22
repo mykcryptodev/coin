@@ -27,64 +27,72 @@ const DurationConfig = {
   dampingRatio: 1,
 };
 
-const BottomTabItem: FC<BottomTabIconProps> = memo(
-  ({ x, y, height, width, onTap, currentIndex, index }) => {
-    const isActive = index === currentIndex;
+function BottomTabItemBase({
+  x,
+  y,
+  height,
+  width,
+  onTap,
+  currentIndex,
+  index,
+}: BottomTabIconProps) {
+  const isActive = index === currentIndex;
 
-    const baseTranslateY = y + height / 2 - iconSize / 2 - 8;
+  const baseTranslateY = y + height / 2 - iconSize / 2 - 8;
 
-    const translateY = useDerivedValue(() => {
-      return withSpring(
-        isActive ? baseTranslateY - 35 : baseTranslateY,
-        DurationConfig,
-      );
-    }, [baseTranslateY, isActive]);
-
-    const iconColorProgress = useDerivedValue(() => {
-      return withTiming(isActive ? 1 : 0, DurationConfig);
-    }, [isActive]);
-
-    const iconColor = useDerivedValue(() => {
-      return interpolateColor(
-        iconColorProgress.value,
-        [0, 1],
-        ['#008CFF', '#FFFFFF'],
-      );
-    }, [iconColorProgress]);
-
-    const transform = useDerivedValue(() => {
-      return [
-        { translateX: x + width / 2 - iconSize / 2 },
-        {
-          translateY: translateY.value,
-        },
-      ];
-    }, [translateY]);
-
-    const icon = BOTTOM_BAR_ICONS[index]!;
-
-    const dst = useMemo(() => {
-      return rect(0, 0, iconSize, iconSize);
-    }, []);
-
-    return (
-      <Group>
-        <Touchable.Rect
-          x={x}
-          onTap={onTap}
-          height={height}
-          width={width}
-          y={y}
-          color="transparent"
-        />
-        <Group transform={transform}>
-          <FitBox src={icon.src} dst={dst}>
-            <Path path={icon.path} color={iconColor} />
-          </FitBox>
-        </Group>
-      </Group>
+  const translateY = useDerivedValue(() => {
+    return withSpring(
+      isActive ? baseTranslateY - 35 : baseTranslateY,
+      DurationConfig,
     );
-  },
-);
+  }, [baseTranslateY, isActive]);
+
+  const iconColorProgress = useDerivedValue(() => {
+    return withTiming(isActive ? 1 : 0, DurationConfig);
+  }, [isActive]);
+
+  const iconColor = useDerivedValue(() => {
+    return interpolateColor(
+      iconColorProgress.value,
+      [0, 1],
+      ['#008CFF', '#FFFFFF'],
+    );
+  }, [iconColorProgress]);
+
+  const transform = useDerivedValue(() => {
+    return [
+      { translateX: x + width / 2 - iconSize / 2 },
+      {
+        translateY: translateY.value,
+      },
+    ];
+  }, [translateY]);
+
+  const icon = BOTTOM_BAR_ICONS[index]!;
+
+  const dst = useMemo(() => {
+    return rect(0, 0, iconSize, iconSize);
+  }, []);
+
+  return (
+    <Group>
+      <Touchable.Rect
+        x={x}
+        onTap={onTap}
+        height={height}
+        width={width}
+        y={y}
+        color="transparent"
+      />
+      <Group transform={transform}>
+        <FitBox src={icon.src} dst={dst}>
+          <Path path={icon.path} color={iconColor} />
+        </FitBox>
+      </Group>
+    </Group>
+  );
+}
+
+const BottomTabItem: FC<BottomTabIconProps> = memo(BottomTabItemBase);
 
 export { BottomTabItem };
