@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable, TextInput } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
@@ -35,15 +35,6 @@ function useUsdcBalance(address: string | null) {
   return { balance, loading, refetch: fetchBalance };
 }
 
-function shortenAddress(address: string): string {
-  if (address.length <= 13) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function getInitials(address: string): string {
-  return address.slice(2, 4).toUpperCase();
-}
-
 export default function MeScreen() {
   const { currentUser } = useCurrentUser();
   const { signOut } = useSignOut();
@@ -61,28 +52,12 @@ export default function MeScreen() {
     currentUser?.evmAccounts?.[0] ??
     null;
 
-  const userProfile = useQuery(api.users.getByWalletAddress, walletAddress ? { walletAddress } : "skip");
+  const convexUser = useQuery(
+    api.users.getByWalletAddress,
+    walletAddress ? { walletAddress } : "skip",
+  );
 
   const { balance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(walletAddress);
-
-  const [editingUsername, setEditingUsername] = useState(false);
-  const [usernameInput, setUsernameInput] = useState("");
-  const [usernameSaving, setUsernameSaving] = useState(false);
-  const [debouncedUsername, setDebouncedUsername] = useState("");
-
-  const setUsername = useMutation(api.users.setUsername);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedUsername(usernameInput);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [usernameInput]);
-
-  const usernameAvailability = useQuery(
-    api.users.checkUsernameAvailable,
-    debouncedUsername.length >= 3 ? { username: debouncedUsername } : "skip"
-  );
 
   const createOnrampUrl = useAction(api.cdp.createOnrampUrl);
   const [addMoneyLoading, setAddMoneyLoading] = useState(false);
@@ -132,153 +107,17 @@ export default function MeScreen() {
       <View style={styles.avatarContainer}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {walletAddress ? getInitials(walletAddress) : "?"}
+            {convexUser?.username?.[0]?.toUpperCase() ?? "?"}
           </Text>
         </View>
       </View>
 
       <View style={styles.content}>
-        {walletAddress && (
-          <Text style={styles.addressLabel}>
-            {shortenAddress(walletAddress)}
+        {convexUser?.username && (
+          <Text style={styles.usernameLabel}>
+            @{convexUser.username}
           </Text>
         )}
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.balanceLabel}>Wallet</Text>
-          </View>
-          <View style={styles.addressRow}>
-            <MaterialIcons name="account-balance-wallet" size={20} color="#008CFF" />
-            <Text style={styles.fullAddress} selectable numberOfLines={1}>
-              {walletAddress ?? "No wallet found"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.balanceLabel}>Username</Text>
-          </View>
-
-          {!editingUsername ? (
-            <>
-              {userProfile?.username ? (
-                <View style={styles.usernameRow}>
-                  <Text style={styles.usernameText}>@{userProfile.username}</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setUsernameInput(userProfile.username || "");
-                      setEditingUsername(true);
-                    }}
-                  >
-                    <MaterialIcons name="edit" size={20} color="#008CFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.usernameRow}>
-                  <Text style={{ fontSize: 16, color: "#687076" }}>Set your @username</Text>
-                  <TouchableOpacity
-                    style={styles.setUsernameButton}
-                    onPress={() => {
-                      setUsernameInput("");
-                      setEditingUsername(true);
-                    }}
-                  >
-                    <Text style={styles.setUsernameText}>Set</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              <View style={styles.usernameInputRow}>
-                <Text style={styles.usernamePrefix}>@</Text>
-                <TextInput
-                  style={styles.usernameTextInput}
-                  placeholder="username"
-                  placeholderTextColor="#ccc"
-                  value={usernameInput}
-                  onChangeText={setUsernameInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {usernameInput.length >= 3 && debouncedUsername !== usernameInput && (
-                <View style={{ marginTop: 6, marginLeft: 4 }}>
-                  <ActivityIndicator size="small" color="#008CFF" />
-                </View>
-              )}
-
-              {usernameInput.length >= 3 && debouncedUsername === usernameInput && (
-                <Text
-                  style={[
-                    styles.availabilityText,
-                    { color: usernameAvailability?.available ? "#34C759" : "#ff3b30" },
-                  ]}
-                >
-                  {usernameAvailability?.available
-                    ? "✓ Available"
-                    : usernameAvailability?.error || "Not available"}
-                </Text>
-              )}
-
-              <View style={styles.usernameActions}>
-                <TouchableOpacity
-                  style={[styles.transferButton, { flex: 1 }]}
-                  onPress={() => {
-                    setEditingUsername(false);
-                    setUsernameInput("");
-                  }}
-                >
-                  <Text style={styles.transferText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.addMoneyButton,
-                    { flex: 1 },
-                    (usernameSaving ||
-                      usernameInput.length < 3 ||
-                      usernameAvailability?.available === false) &&
-                      styles.addMoneyButtonDisabled,
-                  ]}
-                  onPress={async () => {
-                    if (!currentUser?.userId || !walletAddress) return;
-                    setUsernameSaving(true);
-                    try {
-                      await setUsername({
-                        cdpUserId: currentUser.userId,
-                        username: usernameInput,
-                        walletAddress: walletAddress,
-                      });
-                      setEditingUsername(false);
-                      setUsernameInput("");
-                    } catch (e) {
-                      Alert.alert(
-                        "Error",
-                        e instanceof Error ? e.message : "Failed to set username."
-                      );
-                    } finally {
-                      setUsernameSaving(false);
-                    }
-                  }}
-                  disabled={
-                    usernameSaving ||
-                    usernameInput.length < 3 ||
-                    usernameAvailability?.available === false
-                  }
-                >
-                  {usernameSaving ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.addMoneyText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
 
         <View style={styles.card}>
           <Text style={styles.balanceLabel}>Balance</Text>
@@ -309,19 +148,6 @@ export default function MeScreen() {
           </View>
         </View>
 
-        {currentUser?.userId && (
-          <View style={styles.card}>
-            <Text style={styles.balanceLabel}>User ID</Text>
-            <Text style={styles.userId} selectable>
-              {currentUser.userId}
-            </Text>
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <MaterialIcons name="logout" size={20} color="#ff3b30" />
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
       </View>
 
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
@@ -330,6 +156,11 @@ export default function MeScreen() {
             <TouchableOpacity style={styles.menuItem} onPress={handleStartOnboarding}>
               <MaterialIcons name="play-circle-outline" size={20} color="#11181C" />
               <Text style={styles.menuItemText}>Start Onboarding</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDivider} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleSignOut(); }}>
+              <MaterialIcons name="logout" size={20} color="#ff3b30" />
+              <Text style={styles.menuItemTextDestructive}>Sign Out</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -390,8 +221,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  addressLabel: {
-    fontSize: 16,
+  usernameLabel: {
+    fontSize: 18,
     fontWeight: "600",
     color: "#11181C",
     textAlign: "center",
@@ -405,29 +236,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e8e8e8",
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
   balanceLabel: {
     fontSize: 14,
     fontWeight: "600",
     color: "#687076",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-  },
-  addressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  fullAddress: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "monospace",
-    color: "#11181C",
   },
   balanceRow: {
     flexDirection: "row",
@@ -485,27 +299,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
-  userId: {
-    fontSize: 14,
-    color: "#11181C",
-    marginTop: 8,
-  },
-  signOutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ff3b30",
-  },
-  signOutText: {
-    color: "#ff3b30",
-    fontSize: 16,
-    fontWeight: "600",
-  },
   menuOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -537,57 +330,14 @@ const styles = StyleSheet.create({
     color: "#11181C",
     fontWeight: "500",
   },
-  usernameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
+  menuItemTextDestructive: {
+    fontSize: 16,
+    color: "#ff3b30",
+    fontWeight: "500",
   },
-  usernameText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#008CFF",
-  },
-  usernameInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  usernamePrefix: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#687076",
-    marginRight: 2,
-  },
-  usernameTextInput: {
-    flex: 1,
-    fontSize: 18,
-    color: "#11181C",
-  },
-  availabilityText: {
-    fontSize: 13,
-    marginTop: 6,
-    marginLeft: 4,
-  },
-  usernameActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 12,
-  },
-  setUsernameButton: {
-    borderWidth: 1.5,
-    borderColor: "#008CFF",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  setUsernameText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#008CFF",
+  menuDivider: {
+    height: 1,
+    backgroundColor: "#e8e8e8",
+    marginHorizontal: 16,
   },
 });

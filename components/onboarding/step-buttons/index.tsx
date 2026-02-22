@@ -31,6 +31,7 @@ type StepButtonsProps = {
   backButtonLabel: string;
   onBack: () => void;
   onContinue: () => void;
+  disabled?: boolean;
 };
 
 export const StepButtons: React.FC<StepButtonsProps> = ({
@@ -39,6 +40,7 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
   backButtonLabel,
   onBack,
   onContinue,
+  disabled,
 }) => {
   const { width: windowWidth } = useWindowDimensions();
 
@@ -106,9 +108,10 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
       <Animated.View style={styles.fill}>
         <PressableScale
           onPress={onContinue}
-          style={[styles.button, styles.continueButton]}
+          style={[styles.button, styles.continueButton, disabled && styles.disabledButton]}
           accessibilityRole="button"
           accessibilityLabel={rightLabel}
+          enabled={!disabled}
         >
           <View style={styles.labelContainer}>
             <Animated.View style={[styles.iconContainer, rIconStyle]}>
@@ -153,6 +156,9 @@ const styles = StyleSheet.create({
   continueButton: {
     backgroundColor: '#008CFF',
     flex: 1,
+  },
+  disabledButton: {
+    opacity: 0.4,
   },
   continueButtonLabel: {
     color: 'white',
