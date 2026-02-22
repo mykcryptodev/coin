@@ -7,21 +7,25 @@ type NumberInputProps = {
   value: string;
   onValueChange: (value: string) => void;
   onMaxReached?: () => void;
+  prefix?: string;
 };
 
 export const NumberInput: FC<NumberInputProps> = ({
   value,
   onValueChange,
   onMaxReached,
+  prefix,
 }) => {
   const reset = useCallback(() => {
     onValueChange('');
   }, [onValueChange]);
 
+  const displayValue = prefix ? `${prefix}${value || '0'}` : (value || '0');
+
   return (
     <View style={styles.container}>
       <View style={styles.displayArea}>
-        <AnimatedNumber value={value || '0'} />
+        <AnimatedNumber value={displayValue} />
       </View>
       <View style={styles.gridArea}>
         <ButtonsGrid
@@ -43,7 +47,7 @@ const styles = StyleSheet.create({
   displayArea: {
     alignItems: 'center',
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   gridArea: {

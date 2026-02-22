@@ -9,8 +9,14 @@ type AnimatedNumberProps = {
 };
 
 export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
-  const integerPart = value.includes('.') ? value.split('.')[0] : value;
-  const decimalPart = value.includes('.') ? value.split('.')[1] : undefined;
+  // Strip leading non-numeric prefix (e.g. "$") for parsing
+  const prefixMatch = value.match(/^([^0-9]*)/);
+  const prefix = prefixMatch?.[1] || '';
+  const numericValue = value.slice(prefix.length);
+
+  const integerPart = numericValue.includes('.') ? numericValue.split('.')[0] : numericValue;
+  const decimalPart = numericValue.includes('.') ? numericValue.split('.')[1] : undefined;
+  const hasDecimal = decimalPart !== undefined;
 
   const splittedInteger = useMemo(() => {
     return (integerPart || '0').split('');
@@ -26,17 +32,22 @@ export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
 
   const ITEM_WIDTH = 55;
   const ITEM_HEIGHT = 100;
-  const totalDigits = value.replace('.', '').length || 1;
-  const SCALE = 1 - totalDigits * 0.05;
+  // Unified total: prefix + integer digits + (dot + decimal digits if present)
+  const fullLength = prefix.length + splittedInteger.length + (hasDecimal ? 1 + splittedDecimal.length : 0);
+  const SCALE = 1 - fullLength * 0.05;
   const SCALE_WIDTH_OFFSET = 0.08;
   const SCALED_WIDTH = ITEM_WIDTH * (SCALE + SCALE_WIDTH_OFFSET);
   const COMMA_SPACE = 10 * (1 - splittedInteger.length * 0.025);
+
+  const DOT_TIGHTEN = SCALED_WIDTH * 0.4;
 
   const buildIndividualNumber = useCallback(
     (params: {
       index: number;
       item: string;
       containerStyle?: StyleProp<ViewStyle>;
+      style?: object;
+      extraOffset?: number;
     }) => {
       return (
         <AnimatedSingleNumber
@@ -46,18 +57,19 @@ export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
           scaleWidthOffset={SCALE_WIDTH_OFFSET}
           key={`${params.index}-${params.item}`}
           rightSpace={
-            commas.slice(0, params.index).filter(v => v === ',').length *
-            COMMA_SPACE
+            commas.slice(0, Math.max(0, params.index - prefix.length)).filter(v => v === ',').length *
+            COMMA_SPACE +
+            (params.extraOffset ?? 0)
           }
-          totalNumbersLength={splittedInteger.length}
+          totalNumbersLength={fullLength}
           itemWidth={ITEM_WIDTH}
           itemHeight={ITEM_HEIGHT}
           containerStyle={[styles.itemContainer, params.containerStyle ?? {}]}
-          style={styles.item}
+          style={params.style ?? styles.item}
         />
       );
     },
-    [COMMA_SPACE, SCALE, commas, splittedInteger.length],
+    [COMMA_SPACE, DOT_TIGHTEN, SCALE, commas, fullLength, prefix.length],
   );
 
   return (
@@ -69,56 +81,55 @@ export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
         backgroundColor: 'transparent',
         alignItems: 'flex-end',
       }}>
+      {prefix.split('').map((char, index) =>
+        buildIndividualNumber({
+          index,
+          item: char,
+          style: styles.prefixItem,
+        }),
+      )}
       {splittedInteger.map((item, index) => {
-        return buildIndividualNumber({ index, item });
+        return buildIndividualNumber({ index: index + prefix.length, item });
       })}
       {commas.map((item, index) => {
         if (item === '') return null;
 
         return buildIndividualNumber({
-          index,
+          index: index + prefix.length,
           item,
           containerStyle: {
             marginLeft: SCALED_WIDTH / 2 + COMMA_SPACE / 2,
           },
         });
       })}
-      {decimalPart !== undefined && (
-        <View style={[styles.itemContainer, { width: ITEM_WIDTH * SCALE, height: ITEM_HEIGHT }]}>
-          <AnimatedSingleNumber
-            index={splittedInteger.length}
-            value="."
-            scale={SCALE}
-            scaleWidthOffset={SCALE_WIDTH_OFFSET}
-            key="decimal-dot"
-            totalNumbersLength={splittedInteger.length + 1}
-            itemWidth={ITEM_WIDTH}
-            itemHeight={ITEM_HEIGHT}
-            containerStyle={styles.itemContainer}
-            style={styles.dotItem}
-          />
-        </View>
+      {hasDecimal &&
+        buildIndividualNumber({
+          index: splittedInteger.length + prefix.length,
+          item: '.',
+          style: styles.dotItem,
+          extraOffset: -DOT_TIGHTEN,
+        })
+      }
+      {splittedDecimal.map((item, index) =>
+        buildIndividualNumber({
+          index: splittedInteger.length + prefix.length + 1 + index,
+          item,
+          extraOffset: -DOT_TIGHTEN * 2,
+        }),
       )}
-      {splittedDecimal.map((item, index) => (
-        <AnimatedSingleNumber
-          key={`decimal-${index}-${item}`}
-          index={splittedInteger.length + 1 + index}
-          value={item}
-          scale={SCALE}
-          scaleWidthOffset={SCALE_WIDTH_OFFSET}
-          totalNumbersLength={splittedInteger.length + 1 + splittedDecimal.length}
-          itemWidth={ITEM_WIDTH}
-          itemHeight={ITEM_HEIGHT}
-          containerStyle={styles.itemContainer}
-          style={styles.item}
-        />
-      ))}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   item: {
+    color: '#11181C',
+    fontSize: 90,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    width: 60,
+  },
+  prefixItem: {
     color: '#11181C',
     fontSize: 90,
     fontWeight: 'bold',

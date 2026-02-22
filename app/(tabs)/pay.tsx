@@ -130,12 +130,10 @@ export default function PayScreen() {
       </View>
 
       <View style={styles.amountSection}>
-        <View style={styles.dollarRow}>
-          <Text style={styles.dollarSign}>$</Text>
-        </View>
         <NumberInput
           value={amount}
           onValueChange={setAmount}
+          prefix="$"
         />
       </View>
 
@@ -211,15 +209,6 @@ const styles = StyleSheet.create({
   },
   amountSection: {
     flex: 1,
-  },
-  dollarRow: {
-    alignItems: "center",
-    paddingTop: 12,
-  },
-  dollarSign: {
-    fontSize: 48,
-    fontWeight: "300",
-    color: "#11181C",
   },
   noteSection: {
     paddingHorizontal: 20,
