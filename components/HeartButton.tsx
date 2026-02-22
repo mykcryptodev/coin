@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   Atlas,
   Canvas,
@@ -18,7 +18,7 @@ import {
   withSpring,
   type WithSpringConfig,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
+
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 // ----------------------------------------------------------------------------
@@ -170,13 +170,13 @@ const HeartButtonRaw: React.FC<HeartButtonProps> = ({
           blastRadius={size * 1.5}
         />
       </View>
-      <PressableScale onPress={handlePress} style={styles.button}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.7} style={styles.button}>
         <MaterialIcons
           name={isLiked ? "favorite" : "favorite-border"}
           size={size}
           color={isLiked ? "#FF6B6B" : "#687076"}
         />
-      </PressableScale>
+      </TouchableOpacity>
     </View>
   );
 };
