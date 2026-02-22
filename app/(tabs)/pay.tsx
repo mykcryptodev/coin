@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -14,6 +14,7 @@ import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NumberInput } from "@/components/family-numpad";
+import { LoadingButton } from "@/components/loading-button";
 
 function isEmail(input: string): boolean {
   return input.includes("@") && !input.startsWith("0x");
@@ -40,7 +41,31 @@ export default function PayScreen() {
     currentUser?.evmAccounts?.[0] ??
     null;
 
-  const loading = status === "pending" || resolving;
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+    };
+  }, []);
+
+  const buttonStatus = useMemo((): "idle" | "loading" | "success" | "error" => {
+    if (resolving) return "loading";
+    if (status === "pending") return "loading";
+    if (status === "success") return "success";
+    if (status === "error") return "error";
+    return "idle";
+  }, [resolving, status]);
+
+  const buttonTitle = useMemo((): string => {
+    if (resolving) return "Resolving...";
+    if (status === "pending") return "Sending...";
+    if (status === "success") return "Sent!";
+    if (status === "error") return "Failed";
+    return "Pay";
+  }, [resolving, status]);
+
+  const loading = buttonStatus === "loading";
 
   const handleSend = async () => {
     const recipient = to.trim();
@@ -52,6 +77,8 @@ export default function PayScreen() {
       Alert.alert("Error", "Please enter a valid amount.");
       return;
     }
+
+    if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
 
     try {
       let resolvedAddress: string;
@@ -84,20 +111,15 @@ export default function PayScreen() {
         ...(recipientEmail ? { recipientEmail } : {}),
       });
 
-      Alert.alert(
-        "Success",
-        recipientEmail
-          ? `Sent $${amount} USDC to ${recipientEmail}`
-          : `Sent $${amount} USDC`
-      );
-      setTo("");
-      setAmount("");
-      setNote("");
+      resetTimeoutRef.current = setTimeout(() => {
+        setTo("");
+        setAmount("");
+        setNote("");
+      }, 2000);
     } catch (e) {
-      Alert.alert(
-        "Error",
-        e instanceof Error ? e.message : "Failed to send USDC."
-      );
+      resetTimeoutRef.current = setTimeout(() => {
+        // Form stays filled on error so user can retry
+      }, 2000);
     }
   };
 
@@ -155,15 +177,23 @@ export default function PayScreen() {
         >
           <Text style={styles.requestButtonText}>Request</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.payButton, loading && styles.buttonDisabled]}
-          onPress={handleSend}
-          disabled={loading}
-        >
-          <Text style={styles.payButtonText}>
-            {resolving ? "Resolving..." : status === "pending" ? "Sending..." : "Pay"}
-          </Text>
-        </TouchableOpacity>
+        <LoadingButton
+          status={buttonStatus}
+          onPress={buttonStatus === "idle" ? handleSend : undefined}
+          style={styles.payButton}
+          colorFromStatusMap={{
+            idle: "#008CFF",
+            loading: "#008CFF",
+            success: "#34C759",
+            error: "#FF3B30",
+          }}
+          titleFromStatusMap={{
+            idle: buttonTitle,
+            loading: buttonTitle,
+            success: buttonTitle,
+            error: buttonTitle,
+          }}
+        />
       </View>
     </View>
   );
@@ -243,15 +273,9 @@ const styles = StyleSheet.create({
   },
   payButton: {
     flex: 1,
-    backgroundColor: "#008CFF",
+    height: 56,
     borderRadius: 24,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  payButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
+    overflow: "hidden",
   },
   buttonDisabled: {
     opacity: 0.6,
