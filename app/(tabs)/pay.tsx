@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -24,6 +24,12 @@ function isUsername(input: string): boolean {
   return /^@[a-z0-9_]+$/i.test(input);
 }
 
+type ResolvedRecipient = {
+  resolvedAddress: string;
+  recipientEmail?: string;
+  recipientUsername?: string;
+};
+
 export default function PayScreen() {
   const { address } = useLocalSearchParams<{ address?: string }>();
   const [to, setTo] = useState("");
@@ -31,6 +37,7 @@ export default function PayScreen() {
   const [note, setNote] = useState("");
   const [resolving, setResolving] = useState(false);
   const [sendState, setSendState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [requestState, setRequestState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const { currentUser } = useCurrentUser();
   const { sendUsdc } = useSendUsdc();
   const router = useRouter();
@@ -40,6 +47,7 @@ export default function PayScreen() {
     if (address) setTo(address);
   }, [address]);
   const createTransaction = useMutation(api.transactions.create);
+  const createRequest = useMutation(api.paymentRequests.create);
   const resolveRecipient = useAction(api.cdp.resolveRecipient);
 
   const senderAddress =
@@ -48,15 +56,50 @@ export default function PayScreen() {
     null;
 
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+      if (requestResetTimeoutRef.current) clearTimeout(requestResetTimeoutRef.current);
     };
   }, []);
 
+  const resolveRecipientAddress = async (recipient: string): Promise<ResolvedRecipient> => {
+    let resolvedAddress: string;
+    let recipientEmail: string | undefined;
+    let recipientUsername: string | undefined;
+
+    if (isUsername(recipient)) {
+      const usernameToLookup = recipient.slice(1).toLowerCase();
+      setResolving(true);
+      try {
+        const user = await convex.query(api.users.getByUsername, { username: usernameToLookup });
+        if (!user) {
+          throw new Error("Username not found");
+        }
+        resolvedAddress = user.walletAddress;
+        recipientUsername = usernameToLookup;
+      } finally {
+        setResolving(false);
+      }
+    } else if (isEmail(recipient)) {
+      recipientEmail = recipient;
+      setResolving(true);
+      try {
+        resolvedAddress = await resolveRecipient({ email: recipient });
+      } finally {
+        setResolving(false);
+      }
+    } else {
+      resolvedAddress = recipient;
+    }
+
+    return { resolvedAddress, recipientEmail, recipientUsername };
+  };
+
   const buttonTitle = sendState === "loading" ? "Sending..." : sendState === "success" ? "Sent!" : sendState === "error" ? "Failed" : "Pay";
-  const loading = sendState === "loading";
+  const loading = sendState === "loading" || requestState === "loading";
 
   const handleSend = async () => {
     const recipient = to.trim();
@@ -73,35 +116,7 @@ export default function PayScreen() {
     setSendState("loading");
 
     try {
-      let resolvedAddress: string;
-      let recipientEmail: string | undefined;
-      let recipientUsername: string | undefined;
-
-      if (isUsername(recipient)) {
-        const usernameToLookup = recipient.slice(1).toLowerCase();
-        setResolving(true);
-        try {
-          const user = await convex.query(api.users.getByUsername, { username: usernameToLookup });
-          if (!user) {
-            Alert.alert("Error", "Username not found");
-            return;
-          }
-          resolvedAddress = user.walletAddress;
-          recipientUsername = usernameToLookup;
-        } finally {
-          setResolving(false);
-        }
-      } else if (isEmail(recipient)) {
-        recipientEmail = recipient;
-        setResolving(true);
-        try {
-          resolvedAddress = await resolveRecipient({ email: recipient });
-        } finally {
-          setResolving(false);
-        }
-      } else {
-        resolvedAddress = recipient;
-      }
+      const { resolvedAddress, recipientEmail, recipientUsername } = await resolveRecipientAddress(recipient);
 
       await sendUsdc({
         to: resolvedAddress as `0x${string}`,
@@ -130,6 +145,61 @@ export default function PayScreen() {
       setSendState("error");
       resetTimeoutRef.current = setTimeout(() => {
         setSendState("idle");
+      }, 5000);
+    }
+  };
+
+  const handleRequest = async () => {
+    if (!senderAddress) {
+      Alert.alert("Error", "No wallet address found. Please sign in again.");
+      return;
+    }
+
+    const recipient = to.trim();
+    if (!recipient) {
+      Alert.alert("Error", "Please enter a recipient email or address.");
+      return;
+    }
+    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+      Alert.alert("Error", "Please enter a valid amount.");
+      return;
+    }
+
+    if (requestResetTimeoutRef.current) clearTimeout(requestResetTimeoutRef.current);
+    setRequestState("loading");
+
+    try {
+      const { resolvedAddress, recipientEmail, recipientUsername } = await resolveRecipientAddress(recipient);
+
+      if (senderAddress === resolvedAddress) {
+        Alert.alert("Error", "You cannot request money from yourself.");
+        setRequestState("idle");
+        return;
+      }
+
+      const requesterUser = await convex.query(api.users.getByWalletAddress, { walletAddress: senderAddress });
+
+      await createRequest({
+        from: senderAddress,
+        to: resolvedAddress,
+        amount: Number(amount.trim()),
+        note: note.trim() || "Payment request",
+        ...(recipientEmail ? { recipientEmail } : {}),
+        ...(recipientUsername ? { recipientUsername } : {}),
+        ...(requesterUser?.username ? { requesterUsername: requesterUser.username } : {}),
+      });
+
+      setRequestState("success");
+      requestResetTimeoutRef.current = setTimeout(() => {
+        setTo("");
+        setAmount("");
+        setNote("");
+        setRequestState("idle");
+      }, 5000);
+    } catch (e) {
+      setRequestState("error");
+      requestResetTimeoutRef.current = setTimeout(() => {
+        setRequestState("idle");
       }, 5000);
     }
   };
@@ -182,15 +252,26 @@ export default function PayScreen() {
       </View>
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={[styles.requestButton, loading && styles.buttonDisabled]}
-          disabled={loading}
-        >
-          <Text style={styles.requestButtonText}>Request</Text>
-        </TouchableOpacity>
+        <LoadingButton
+          status={requestState}
+          onPress={requestState === "idle" && !loading ? handleRequest : undefined}
+          style={styles.requestButton}
+          colorFromStatusMap={{
+            idle: "#008CFF",
+            loading: "#008CFF",
+            success: "#34C759",
+            error: "#FF3B30",
+          }}
+          titleFromStatusMap={{
+            idle: "Request",
+            loading: "Requesting...",
+            success: "Requested!",
+            error: "Failed",
+          }}
+        />
         <LoadingButton
           status={sendState}
-          onPress={sendState === "idle" ? handleSend : undefined}
+          onPress={sendState === "idle" && !loading ? handleSend : undefined}
           style={styles.payButton}
           colorFromStatusMap={{
             idle: "#008CFF",
@@ -272,15 +353,9 @@ const styles = StyleSheet.create({
   },
   requestButton: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 24,
     paddingVertical: 16,
-    alignItems: "center",
-  },
-  requestButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#008CFF",
+    borderRadius: 24,
+    overflow: "hidden",
   },
   payButton: {
     flex: 1,
