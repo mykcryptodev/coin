@@ -277,6 +277,7 @@ const styles = StyleSheet.create({
   headerLabel: {
     fontSize: 18,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#fff",
   },
   avatarContainer: {
@@ -302,6 +303,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 28,
     fontWeight: "700",
+    fontFamily: 'Segment-Bold',
     color: "#fff",
   },
   content: {
@@ -311,6 +313,7 @@ const styles = StyleSheet.create({
   usernameLabel: {
     fontSize: 18,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#11181C",
     textAlign: "center",
     marginBottom: 20,
@@ -326,6 +329,7 @@ const styles = StyleSheet.create({
   balanceLabel: {
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#687076",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -339,18 +343,21 @@ const styles = StyleSheet.create({
   balanceDollar: {
     fontSize: 20,
     fontWeight: "400",
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
     marginTop: 4,
   },
   balanceAmount: {
     fontSize: 48,
     fontWeight: "700",
+    fontFamily: 'Segment-Bold',
     color: "#11181C",
     lineHeight: 52,
   },
   balanceCents: {
     fontSize: 20,
     fontWeight: "400",
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
     marginTop: 4,
   },
@@ -369,6 +376,7 @@ const styles = StyleSheet.create({
   transferText: {
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#008CFF",
   },
   addMoneyButton: {
@@ -384,6 +392,7 @@ const styles = StyleSheet.create({
   addMoneyText: {
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#fff",
   },
   menuOverlay: {
@@ -414,13 +423,15 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    color: "#11181C",
     fontWeight: "500",
+    fontFamily: 'Segment-Medium',
+    color: "#11181C",
   },
   menuItemTextDestructive: {
     fontSize: 16,
-    color: "#ff3b30",
     fontWeight: "500",
+    fontFamily: 'Segment-Medium',
+    color: "#ff3b30",
   },
   menuDivider: {
     height: 1,

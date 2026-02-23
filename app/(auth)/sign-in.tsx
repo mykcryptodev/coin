@@ -91,6 +91,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#000",
     backgroundColor: "#fff",
+    fontFamily: "Segment-Medium",
   },
   button: {
     backgroundColor: "#0052FF",
@@ -105,5 +106,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: "Segment-Bold",
   },
 });

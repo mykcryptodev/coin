@@ -5,8 +5,13 @@ import "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CDPHooksProvider } from "@coinbase/cdp-hooks";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+
+SplashScreen.preventAutoHideAsync();
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
   unsavedChangesWarning: false,
@@ -14,6 +19,25 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  const [fontsLoaded, fontError] = useFonts({
+    "Segment-Medium": require("../assets/fonts/Segment-Medium.otf"),
+    "Segment-Bold": require("../assets/fonts/Segment-Bold.otf"),
+  });
+
+  useEffect(() => {
+    if (fontError) throw fontError;
+  }, [fontError]);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
     <ConvexProvider client={convex}>
