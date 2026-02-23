@@ -12,7 +12,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { Fonts } from '@/constants/theme';
 
 export type StatusType = 'inProgress' | 'correct' | 'wrong';
 
@@ -88,6 +87,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 28,
     fontWeight: '600',
-    fontFamily: Fonts?.mono,
+    fontFamily: 'Segment-Bold',
   },
 });

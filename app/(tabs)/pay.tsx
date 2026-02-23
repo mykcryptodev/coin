@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "700",
+    fontFamily: 'Segment-Bold',
     color: "#11181C",
   },
   recipientSection: {
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
   recipientInput: {
     flex: 1,
     fontSize: 16,
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
     marginLeft: 8,
   },
@@ -262,6 +264,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     fontSize: 16,
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
   },
   buttonRow: {
@@ -280,6 +283,7 @@ const styles = StyleSheet.create({
   requestButtonText: {
     fontSize: 18,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#008CFF",
   },
   payButton: {

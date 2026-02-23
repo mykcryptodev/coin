@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'Segment-Bold',
   },
 });
 

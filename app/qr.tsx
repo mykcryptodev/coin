@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#11181C",
+    fontFamily: "Segment-Bold",
   },
   tabs: {
     flexDirection: "row",
@@ -189,6 +190,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#999",
+    fontFamily: "Segment-Bold",
   },
   activeTabText: {
     color: "#11181C",
@@ -219,6 +221,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 16,
     fontWeight: "500",
+    fontFamily: "Segment-Medium",
   },
   permissionBox: {
     flex: 1,
@@ -232,6 +235,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 16,
     lineHeight: 22,
+    fontFamily: "Segment-Medium",
   },
   permissionButton: {
     marginTop: 20,
@@ -244,6 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
+    fontFamily: "Segment-Bold",
   },
   payMeContainer: {
     flex: 1,
@@ -260,10 +265,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#11181C",
     marginTop: 20,
+    fontFamily: "Segment-Bold",
   },
   networkLabel: {
     fontSize: 14,
     color: "#687076",
     marginTop: 4,
+    fontFamily: "Segment-Medium",
   },
 });

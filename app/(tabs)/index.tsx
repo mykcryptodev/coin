@@ -223,6 +223,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "700",
+    fontFamily: 'Segment-Bold',
     color: "#11181C",
   },
   searchContainer: {
@@ -238,6 +239,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
   },
   feedList: {
@@ -280,24 +282,29 @@ const styles = StyleSheet.create({
   feedName: {
     fontSize: 15,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#11181C",
   },
   feedAction: {
     fontSize: 15,
+    fontFamily: 'Segment-Medium',
     color: "#687076",
   },
   feedTime: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#999",
   },
   feedAmount: {
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#008CFF",
     marginTop: 2,
   },
   feedNote: {
     fontSize: 15,
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
     marginTop: 4,
   },
@@ -314,6 +321,7 @@ const styles = StyleSheet.create({
   },
   commentCount: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#687076",
     marginLeft: 4,
   },
@@ -328,11 +336,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: "600",
+    fontFamily: 'Segment-Bold',
     color: "#11181C",
     marginTop: 12,
   },
   emptySubtext: {
     fontSize: 14,
+    fontFamily: 'Segment-Medium',
     color: "#999",
     marginTop: 4,
   },

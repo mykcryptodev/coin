@@ -100,12 +100,14 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#999",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   emptyText: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#999",
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -121,6 +123,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -139,6 +142,7 @@ const styles = StyleSheet.create({
   },
   signInText: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#999",
     paddingHorizontal: 16,
     paddingVertical: 12,

@@ -151,5 +151,6 @@ const styles = StyleSheet.create({
   pasteText: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: 'Segment-Medium',
   },
 });

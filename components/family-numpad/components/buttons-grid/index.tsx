@@ -123,12 +123,14 @@ const styles = StyleSheet.create({
     color: '#11181C',
     fontSize: 30,
     fontWeight: '500',
+    fontFamily: 'Segment-Medium',
     textAlign: 'center',
   },
   dot: {
     color: '#11181C',
     fontSize: 36,
     fontWeight: '300',
+    fontFamily: 'Segment-Medium',
     textAlign: 'center',
   },
 });

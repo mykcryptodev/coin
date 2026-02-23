@@ -64,14 +64,17 @@ const styles = StyleSheet.create({
   },
   userId: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#687076",
   },
   timestamp: {
     fontSize: 13,
+    fontFamily: 'Segment-Medium',
     color: "#687076",
   },
   commentText: {
     fontSize: 14,
+    fontFamily: 'Segment-Medium',
     color: "#11181C",
   },
 });

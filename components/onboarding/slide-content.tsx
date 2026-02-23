@@ -170,15 +170,18 @@ const styles = StyleSheet.create({
   atSymbol: {
     fontSize: 20,
     fontWeight: '600',
+    fontFamily: 'Segment-Bold',
     marginRight: 4,
   },
   availableText: {
     color: '#34C759',
     fontSize: 14,
+    fontFamily: 'Segment-Medium',
     marginLeft: 6,
   },
   checkingText: {
     fontSize: 14,
+    fontFamily: 'Segment-Medium',
     opacity: 0.5,
   },
   container: {
@@ -195,6 +198,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flex: 1,
     fontSize: 20,
+    fontFamily: 'Segment-Medium',
     paddingVertical: 8,
   },
   inputRow: {
@@ -220,6 +224,7 @@ const styles = StyleSheet.create({
   unavailableText: {
     color: '#FF3B30',
     fontSize: 14,
+    fontFamily: 'Segment-Medium',
     marginLeft: 6,
   },
 });

@@ -9,8 +9,6 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { Fonts } from '@/constants/theme';
-
 import type { SharedValue } from 'react-native-reanimated';
 
 const BUTTON_HEIGHT = 60;
@@ -133,7 +131,7 @@ const styles = StyleSheet.create({
   },
   backButtonLabel: {
     color: 'black',
-    fontFamily: Fonts?.rounded,
+    fontFamily: 'Segment-Bold',
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -162,7 +160,7 @@ const styles = StyleSheet.create({
   },
   continueButtonLabel: {
     color: 'white',
-    fontFamily: Fonts?.rounded,
+    fontFamily: 'Segment-Bold',
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
