@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
+import { useSendUsdc } from "@coinbase/cdp-hooks";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
@@ -9,6 +10,22 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as WebBrowser from "expo-web-browser";
 
 const ONBOARDING_KEY = '@coin-expo/onboarding-completed';
+
+function timeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function shortenAddress(address: string): string {
+  if (address.length <= 10) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
 
 function useUsdcBalance(address: string | null) {
   const [balance, setBalance] = useState<string | null>(null);
@@ -58,6 +75,65 @@ export default function MeScreen() {
   );
 
   const { balance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(walletAddress);
+
+  const incomingRequests = useQuery(
+    api.paymentRequests.getIncoming,
+    walletAddress ? { recipientAddress: walletAddress } : "skip"
+  );
+  const outgoingRequests = useQuery(
+    api.paymentRequests.getOutgoing,
+    walletAddress ? { requesterAddress: walletAddress } : "skip"
+  );
+
+  const payRequestMutation = useMutation(api.paymentRequests.pay);
+  const declineRequestMutation = useMutation(api.paymentRequests.decline);
+  const cancelRequestMutation = useMutation(api.paymentRequests.cancel);
+
+  const { sendUsdc } = useSendUsdc();
+
+  const [requestStates, setRequestStates] = useState<Record<string, "idle" | "loading" | "success" | "error">>({});
+
+  const handlePayRequest = async (request: { _id: string; from: string; amount: number }) => {
+    if (!walletAddress) return;
+    setRequestStates((prev) => ({ ...prev, [request._id]: "loading" }));
+    try {
+      await sendUsdc({
+        to: request.from as `0x${string}`,
+        amount: request.amount.toString(),
+        network: "base" as const,
+        useCdpPaymaster: true,
+      });
+      await payRequestMutation({ requestId: request._id as any, payerAddress: walletAddress });
+      setRequestStates((prev) => ({ ...prev, [request._id]: "success" }));
+    } catch (error) {
+      Alert.alert("Payment Failed", error instanceof Error ? error.message : "Unknown error");
+      setRequestStates((prev) => ({ ...prev, [request._id]: "error" }));
+    }
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    if (!walletAddress) return;
+    setRequestStates((prev) => ({ ...prev, [requestId]: "loading" }));
+    try {
+      await declineRequestMutation({ requestId: requestId as any, declinerAddress: walletAddress });
+      setRequestStates((prev) => ({ ...prev, [requestId]: "idle" }));
+    } catch (error) {
+      Alert.alert("Error", error instanceof Error ? error.message : "Unknown error");
+      setRequestStates((prev) => ({ ...prev, [requestId]: "error" }));
+    }
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    if (!walletAddress) return;
+    setRequestStates((prev) => ({ ...prev, [requestId]: "loading" }));
+    try {
+      await cancelRequestMutation({ requestId: requestId as any, cancellerAddress: walletAddress });
+      setRequestStates((prev) => ({ ...prev, [requestId]: "idle" }));
+    } catch (error) {
+      Alert.alert("Error", error instanceof Error ? error.message : "Unknown error");
+      setRequestStates((prev) => ({ ...prev, [requestId]: "error" }));
+    }
+  };
 
   const createOnrampUrl = useAction(api.cdp.createOnrampUrl);
   const [addMoneyLoading, setAddMoneyLoading] = useState(false);
@@ -147,6 +223,121 @@ export default function MeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {incomingRequests && incomingRequests.length > 0 && (
+          <View style={styles.requestCard}>
+            <View style={styles.requestSectionHeaderRow}>
+              <Text style={styles.requestSectionHeader}>Requests for You</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>{incomingRequests.length}</Text>
+              </View>
+            </View>
+            {incomingRequests.map((request, index) => (
+              <View
+                key={request._id}
+                style={[
+                  styles.requestItem,
+                  index === incomingRequests.length - 1 && { borderBottomWidth: 0 },
+                ]}
+              >
+                <View style={styles.requestItemHeader}>
+                  <Text style={styles.requestFrom}>
+                    {request.requesterUsername
+                      ? `@${request.requesterUsername}`
+                      : shortenAddress(request.from)}
+                  </Text>
+                  <Text style={styles.requestAmount}>${request.amount.toFixed(2)}</Text>
+                </View>
+                {request.note ? (
+                  <Text style={styles.requestNote}>{request.note}</Text>
+                ) : null}
+                <Text style={styles.requestTime}>{timeAgo(request.createdAt)}</Text>
+                <View style={styles.requestActions}>
+                  <TouchableOpacity
+                    style={[styles.payButton, requestStates[request._id] === "loading" && { opacity: 0.6 }]}
+                    onPress={() => handlePayRequest(request)}
+                    disabled={requestStates[request._id] === "loading"}
+                  >
+                    {requestStates[request._id] === "loading" ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.payButtonText}>Pay</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.declineButton, requestStates[request._id] === "loading" && { opacity: 0.6 }]}
+                    onPress={() => handleDeclineRequest(request._id)}
+                    disabled={requestStates[request._id] === "loading"}
+                  >
+                    {requestStates[request._id] === "loading" ? (
+                      <ActivityIndicator color="#FF3B30" size="small" />
+                    ) : (
+                      <Text style={styles.declineButtonText}>Decline</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {outgoingRequests && outgoingRequests.length > 0 && (
+          <View style={styles.requestCard}>
+            <Text style={styles.requestSectionHeader}>Your Requests</Text>
+            {outgoingRequests.map((request, index) => {
+              const statusColors: Record<string, string> = {
+                pending: "#FFA500",
+                paid: "#34C759",
+                declined: "#FF3B30",
+                cancelled: "#687076",
+              };
+              return (
+                <View
+                  key={request._id}
+                  style={[
+                    styles.requestItem,
+                    index === outgoingRequests.length - 1 && { borderBottomWidth: 0 },
+                  ]}
+                >
+                  <View style={styles.requestItemHeader}>
+                    <Text style={styles.requestFrom}>
+                      {request.recipientUsername
+                        ? `@${request.recipientUsername}`
+                        : request.recipientEmail ?? shortenAddress(request.to)}
+                    </Text>
+                    <Text style={styles.requestAmount}>${request.amount.toFixed(2)}</Text>
+                  </View>
+                  {request.note ? (
+                    <Text style={styles.requestNote}>{request.note}</Text>
+                  ) : null}
+                  <View style={styles.requestStatusRow}>
+                    <View style={[styles.statusBadge, { backgroundColor: statusColors[request.status] }]}>
+                      <Text style={styles.statusText}>
+                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                      </Text>
+                    </View>
+                    <Text style={styles.requestTime}>{timeAgo(request.createdAt)}</Text>
+                  </View>
+                  {request.status === "pending" && (
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity
+                        style={[styles.cancelButton, requestStates[request._id] === "loading" && { opacity: 0.6 }]}
+                        onPress={() => handleCancelRequest(request._id)}
+                        disabled={requestStates[request._id] === "loading"}
+                      >
+                        {requestStates[request._id] === "loading" ? (
+                          <ActivityIndicator color="#687076" size="small" />
+                        ) : (
+                          <Text style={styles.cancelButtonText}>Cancel</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
       </View>
 
@@ -339,5 +530,125 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#e8e8e8",
     marginHorizontal: 16,
+  },
+  requestCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e8e8e8",
+  },
+  requestSectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  requestSectionHeader: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#11181C",
+    marginBottom: 12,
+  },
+  requestItem: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e8e8e8",
+  },
+  requestItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  requestFrom: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#11181C",
+  },
+  requestAmount: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#11181C",
+  },
+  requestNote: {
+    fontSize: 14,
+    color: "#687076",
+    marginTop: 4,
+  },
+  requestTime: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 4,
+  },
+  requestStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 8,
+  },
+  requestActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  payButton: {
+    flex: 1,
+    backgroundColor: "#008CFF",
+    borderRadius: 20,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  payButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  declineButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#FF3B30",
+    borderRadius: 20,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  declineButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FF3B30",
+  },
+  cancelButton: {
+    borderWidth: 1.5,
+    borderColor: "#687076",
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#687076",
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  countBadge: {
+    backgroundColor: "#008CFF",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
