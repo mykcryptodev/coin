@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable, Image } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
@@ -57,6 +57,71 @@ export default function MeScreen() {
     walletAddress ? { walletAddress } : "skip",
   );
 
+  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
+  const updateAvatar = useMutation(api.users.updateAvatar);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarPress = async () => {
+    if (!currentUser?.userId || !walletAddress) return;
+
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
+
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow photo library access in Settings to upload an avatar.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (result.canceled) return;
+
+      setAvatarUploading(true);
+      const asset = result.assets[0];
+
+      const resized = await manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 512, height: 512 } }],
+        { compress: 0.8, format: SaveFormat.JPEG }
+      );
+
+      const uploadUrl = await generateUploadUrl();
+
+      const response = await fetch(resized.uri);
+      const blob = await response.blob();
+      
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/jpeg' },
+        body: blob,
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error("Upload failed");
+      }
+      
+      const { storageId } = await uploadResponse.json();
+
+      await updateAvatar({
+        cdpUserId: currentUser.userId,
+        walletAddress,
+        storageId,
+      });
+
+    } catch (error) {
+      Alert.alert("Error", "Failed to update avatar.");
+      console.error(error);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const { balance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(walletAddress);
 
   const createOnrampUrl = useAction(api.cdp.createOnrampUrl);
@@ -105,11 +170,33 @@ export default function MeScreen() {
       </View>
 
       <View style={styles.avatarContainer}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {convexUser?.username?.[0]?.toUpperCase() ?? "?"}
-          </Text>
-        </View>
+        <TouchableOpacity
+          onPress={handleAvatarPress}
+          disabled={avatarUploading}
+          testID="avatar-upload-button"
+        >
+          <View style={styles.avatar}>
+            {convexUser?.avatarUrl ? (
+              <Image
+                source={{ uri: convexUser.avatarUrl }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.avatarText}>
+                {convexUser?.username?.[0]?.toUpperCase() ?? "?"}
+              </Text>
+            )}
+            {avatarUploading && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            )}
+          </View>
+          <View style={styles.cameraIconContainer}>
+            <MaterialIcons name="camera-alt" size={16} color="#fff" />
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -339,5 +426,30 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#e8e8e8",
     marginHorizontal: 16,
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#008CFF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 });

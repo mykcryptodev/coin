@@ -31,3 +31,23 @@ jest.mock('@shopify/react-native-skia', () => {
     Path: MockComponent,
   };
 });
+
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ status: 'granted', granted: true })
+  ),
+  launchImageLibraryAsync: jest.fn(() =>
+    Promise.resolve({
+      canceled: false,
+      assets: [{ uri: 'file:///mock/image.jpg', mimeType: 'image/jpeg' }],
+    })
+  ),
+  MediaTypeOptions: { Images: 'Images' },
+}));
+
+jest.mock('expo-image-manipulator', () => ({
+  manipulateAsync: jest.fn((uri) =>
+    Promise.resolve({ uri: uri + '_resized' })
+  ),
+  SaveFormat: { JPEG: 'jpeg', PNG: 'png' },
+}));

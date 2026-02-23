@@ -1,9 +1,17 @@
-import { StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -47,12 +55,18 @@ const slides: SlideData[] = [
 type SlideContentProps = {
   activeIndex: SharedValue<number>;
   onAvailableUsernameChange?: (username: string | null) => void;
+  onAvatarStorageId?: (storageId: string | null) => void;
+  walletAddress?: string | null;
+  cdpUserId?: string | null;
   saving?: boolean;
 };
 
 export const SlideContent: React.FC<SlideContentProps> = ({
   activeIndex,
   onAvailableUsernameChange,
+  onAvatarStorageId,
+  walletAddress,
+  cdpUserId,
   saving,
 }) => {
   const colorScheme = useColorScheme() ?? 'light';
@@ -61,6 +75,10 @@ export const SlideContent: React.FC<SlideContentProps> = ({
   const [usernameInput, setUsernameInput] = useState('');
   const [debouncedUsername, setDebouncedUsername] = useState('');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
 
   const availability = useQuery(
     api.users.checkUsernameAvailable,
@@ -102,14 +120,98 @@ export const SlideContent: React.FC<SlideContentProps> = ({
     }
   }, [availability, debouncedUsername, onAvailableUsernameChange]);
 
+  const handleAvatarPress = async () => {
+    if (!cdpUserId || !walletAddress) return;
+
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
+
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow photo library access in Settings to upload an avatar.',
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (result.canceled) return;
+
+      setAvatarUploading(true);
+      const asset = result.assets[0];
+
+      const resized = await manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 512, height: 512 } }],
+        { compress: 0.8, format: SaveFormat.JPEG },
+      );
+
+      setAvatarUri(resized.uri);
+
+      const uploadUrl = await generateUploadUrl();
+
+      const response = await fetch(resized.uri);
+      const blob = await response.blob();
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/jpeg' },
+        body: blob,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const { storageId } = await uploadResponse.json();
+      onAvatarStorageId?.(storageId);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to upload avatar.');
+      console.error(error);
+      setAvatarUri(null);
+      onAvatarStorageId?.(null);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const slide = slides[currentSlide]!;
 
   if (currentSlide === 2) {
     return (
       <Animated.View style={[styles.container, rFadeStyle]}>
-        <View style={styles.iconContainer}>
-          <MaterialIcons name={slide.icon} size={64} color={tintColor} />
-        </View>
+        <TouchableOpacity
+          onPress={handleAvatarPress}
+          disabled={avatarUploading}
+          style={styles.avatarTouchable}
+        >
+          <View style={styles.avatar}>
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="person" size={40} color="#fff" />
+            )}
+            {avatarUploading && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            )}
+          </View>
+          <View style={styles.cameraIconContainer}>
+            <MaterialIcons name="camera-alt" size={16} color="#fff" />
+          </View>
+        </TouchableOpacity>
         <ThemedText type="title" style={styles.title}>
           {slide.title}
         </ThemedText>
@@ -176,6 +278,43 @@ const styles = StyleSheet.create({
     color: '#34C759',
     fontSize: 14,
     marginLeft: 6,
+  },
+  avatar: {
+    alignItems: 'center',
+    backgroundColor: '#4ECDC4',
+    borderRadius: 40,
+    height: 80,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 80,
+  },
+  avatarImage: {
+    borderRadius: 40,
+    height: 80,
+    width: 80,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 40,
+    justifyContent: 'center',
+  },
+  avatarTouchable: {
+    marginBottom: 16,
+  },
+  cameraIconContainer: {
+    alignItems: 'center',
+    backgroundColor: '#008CFF',
+    borderColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 2,
+    bottom: 0,
+    height: 24,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
+    width: 24,
   },
   checkingText: {
     fontSize: 14,

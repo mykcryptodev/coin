@@ -6,6 +6,7 @@ export default defineSchema({
     cdpUserId: v.string(),
     username: v.string(),
     walletAddress: v.string(),
+    avatarStorageId: v.optional(v.id("_storage")),
   })
     .index("by_username", ["username"])
     .index("by_walletAddress", ["walletAddress"])
