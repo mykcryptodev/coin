@@ -31,6 +31,26 @@ export default defineSchema({
     text: v.string(),
     createdAt: v.number(),
   }).index("by_transactionId", ["transactionId"]),
+  paymentRequests: defineTable({
+    from: v.string(),
+    to: v.string(),
+    amount: v.number(),
+    note: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("declined"),
+      v.literal("cancelled"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    recipientEmail: v.optional(v.string()),
+    recipientUsername: v.optional(v.string()),
+    requesterUsername: v.optional(v.string()),
+  })
+    .index("by_recipient_status_createdAt", ["to", "status", "createdAt"])
+    .index("by_requester_createdAt", ["from", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
   users: defineTable({
     username: v.string(),
     walletAddress: v.string(),
