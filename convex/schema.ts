@@ -51,12 +51,4 @@ export default defineSchema({
     .index("by_recipient_status_createdAt", ["to", "status", "createdAt"])
     .index("by_requester_createdAt", ["from", "createdAt"])
     .index("by_createdAt", ["createdAt"]),
-  users: defineTable({
-    username: v.string(),
-    walletAddress: v.string(),
-    cdpUserId: v.string(),
-  })
-    .index("by_username", ["username"])
-    .index("by_walletAddress", ["walletAddress"])
-    .index("by_cdpUserId", ["cdpUserId"]),
 });

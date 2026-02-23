@@ -10,6 +10,7 @@
 
 import type * as cdp from "../cdp.js";
 import type * as comments from "../comments.js";
+import type * as paymentRequests from "../paymentRequests.js";
 import type * as reactions from "../reactions.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
@@ -23,6 +24,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   cdp: typeof cdp;
   comments: typeof comments;
+  paymentRequests: typeof paymentRequests;
   reactions: typeof reactions;
   transactions: typeof transactions;
   users: typeof users;
