@@ -7,14 +7,22 @@ import {
   View,
   Text,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSendUsdc, useCurrentUser } from "@coinbase/cdp-hooks";
-import { useMutation, useAction, useConvex } from "convex/react";
+import { useMutation, useAction, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NumberInput } from "@/components/family-numpad";
 import { LoadingButton } from "@/components/loading-button";
+
+const AVATAR_COLORS = ["#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7","#DDA0DD","#98D8C8","#F7DC6F","#BB8FCE","#85C1E9"];
+function getUsernameColor(username: string): string {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 function isEmail(input: string): boolean {
   return input.includes("@") && !input.startsWith("0x");
@@ -27,6 +35,7 @@ function isUsername(input: string): boolean {
 export default function PayScreen() {
   const { address } = useLocalSearchParams<{ address?: string }>();
   const [to, setTo] = useState("");
+  const [debouncedTo, setDebouncedTo] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [resolving, setResolving] = useState(false);
@@ -35,6 +44,20 @@ export default function PayScreen() {
   const { sendUsdc } = useSendUsdc();
   const router = useRouter();
   const convex = useConvex();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedTo(to), 300);
+    return () => clearTimeout(timer);
+  }, [to]);
+
+  // Show search dropdown when input could be a username (not email, not 0x address)
+  const shouldSearch = debouncedTo.length > 0 && !debouncedTo.includes(".") && !debouncedTo.startsWith("0x") && !debouncedTo.includes(" ");
+  const searchPrefix = debouncedTo.startsWith("@") ? debouncedTo.slice(1) : debouncedTo;
+  const searchResults = useQuery(
+    api.users.searchByUsernamePrefix,
+    shouldSearch && searchPrefix.length > 0 ? { prefix: searchPrefix, limit: 10 } : "skip"
+  );
+  const showDropdown = searchResults && searchResults.length > 0;
 
   useEffect(() => {
     if (address) setTo(address);
@@ -161,6 +184,32 @@ export default function PayScreen() {
           )}
         </View>
       </View>
+
+      {showDropdown && (
+        <View style={styles.searchDropdown}>
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item._id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.searchResultRow}
+                onPress={() => {
+                  setTo(`@${item.username}`);
+                  setDebouncedTo("");
+                }}
+              >
+                <View style={[styles.searchAvatar, { backgroundColor: getUsernameColor(item.username) }]}>
+                  <Text style={styles.searchAvatarText}>
+                    {item.username.slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.searchResultText}>@{item.username}</Text>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      )}
 
       <View style={styles.amountSection}>
         <NumberInput
@@ -290,5 +339,42 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  searchDropdown: {
+    marginHorizontal: 20,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    maxHeight: 300,
+  },
+  searchResultRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e8e8e8",
+  },
+  searchAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  searchAvatarText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  searchResultText: {
+    fontSize: 16,
+    color: "#11181C",
+    fontWeight: "500",
   },
 });
