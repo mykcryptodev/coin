@@ -31,12 +31,4 @@ export default defineSchema({
     text: v.string(),
     createdAt: v.number(),
   }).index("by_transactionId", ["transactionId"]),
-  users: defineTable({
-    username: v.string(),
-    walletAddress: v.string(),
-    cdpUserId: v.string(),
-  })
-    .index("by_username", ["username"])
-    .index("by_walletAddress", ["walletAddress"])
-    .index("by_cdpUserId", ["cdpUserId"]),
 });
