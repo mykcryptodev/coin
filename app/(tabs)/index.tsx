@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useCurrentUser } from "@coinbase/cdp-hooks";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 import { HeartButton } from "@/components/HeartButton";
 import { CommentSection } from "@/components/CommentSection";
 
@@ -91,7 +91,7 @@ const TransactionItem = memo(function TransactionItem({
           <Image
             source={{ uri: senderData.avatarUrl }}
             style={styles.avatarImage}
-            contentFit="cover"
+            resizeMode="cover"
           />
         ) : (
           <View style={styles.avatarTextContainer}>

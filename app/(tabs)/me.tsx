@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Modal, Pressable, Image } from "react-native";
 import { useCurrentUser, useSignOut } from "@coinbase/cdp-hooks";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
@@ -7,9 +7,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as WebBrowser from "expo-web-browser";
-import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Image } from 'expo-image';
 
 const ONBOARDING_KEY = '@coin-expo/onboarding-completed';
 
@@ -67,13 +64,15 @@ export default function MeScreen() {
   const handleAvatarPress = async () => {
     if (!currentUser?.userId || !walletAddress) return;
 
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert("Permission Required", "Please allow photo library access in Settings to upload an avatar.");
-      return;
-    }
-
     try {
+      const ImagePicker = await import('expo-image-picker');
+      const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
+
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow photo library access in Settings to upload an avatar.");
+        return;
+      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: 'images',
         allowsEditing: true,
@@ -82,7 +81,7 @@ export default function MeScreen() {
       });
 
       if (result.canceled) return;
-      
+
       setAvatarUploading(true);
       const asset = result.assets[0];
 
@@ -181,7 +180,7 @@ export default function MeScreen() {
               <Image
                 source={{ uri: convexUser.avatarUrl }}
                 style={styles.avatarImage}
-                contentFit="cover"
+                resizeMode="cover"
               />
             ) : (
               <Text style={styles.avatarText}>
