@@ -37,27 +37,114 @@ type GetOutgoingArgs = {
 type Ctx = { db: any };
 
 export async function createHandler(ctx: Ctx, args: CreateArgs): Promise<string> {
-  throw new ConvexError("Not implemented");
+  if (args.amount <= 0) {
+    throw new ConvexError("Amount must be greater than 0");
+  }
+  if (args.from === args.to) {
+    throw new ConvexError("Cannot request payment from yourself");
+  }
+  if (args.note.length > 280) {
+    throw new ConvexError("Note must be 280 characters or less");
+  }
+
+  const now = Date.now();
+  const id = await ctx.db.insert("paymentRequests", {
+    from: args.from,
+    to: args.to,
+    amount: args.amount,
+    note: args.note,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+    ...(args.recipientEmail ? { recipientEmail: args.recipientEmail } : {}),
+    ...(args.recipientUsername ? { recipientUsername: args.recipientUsername } : {}),
+    ...(args.requesterUsername ? { requesterUsername: args.requesterUsername } : {}),
+  });
+
+  return id;
 }
 
 export async function payHandler(ctx: Ctx, args: PayArgs): Promise<void> {
-  throw new ConvexError("Not implemented");
+  const request = await ctx.db.get(args.requestId);
+  if (!request) {
+    throw new ConvexError("Request not found");
+  }
+  if (request.status !== "pending") {
+    throw new ConvexError("Request is not pending");
+  }
+  if (args.payerAddress !== request.to) {
+    throw new ConvexError("Only the recipient can pay this request");
+  }
+
+  await ctx.db.patch(args.requestId, {
+    status: "paid",
+    updatedAt: Date.now(),
+  });
+
+  await ctx.db.insert("transactions", {
+    from: request.to,
+    to: request.from,
+    amount: request.amount,
+    note: request.note,
+    timestamp: Date.now(),
+    ...(request.requesterUsername ? { recipientUsername: request.requesterUsername } : {}),
+  });
 }
 
 export async function declineHandler(ctx: Ctx, args: DeclineArgs): Promise<void> {
-  throw new ConvexError("Not implemented");
+  const request = await ctx.db.get(args.requestId);
+  if (!request) {
+    throw new ConvexError("Request not found");
+  }
+  if (request.status !== "pending") {
+    throw new ConvexError("Request is not pending");
+  }
+  if (args.declinerAddress !== request.to) {
+    throw new ConvexError("Only the recipient can decline this request");
+  }
+
+  await ctx.db.patch(args.requestId, {
+    status: "declined",
+    updatedAt: Date.now(),
+  });
 }
 
 export async function cancelHandler(ctx: Ctx, args: CancelArgs): Promise<void> {
-  throw new ConvexError("Not implemented");
+  const request = await ctx.db.get(args.requestId);
+  if (!request) {
+    throw new ConvexError("Request not found");
+  }
+  if (request.status !== "pending") {
+    throw new ConvexError("Request is not pending");
+  }
+  if (args.cancellerAddress !== request.from) {
+    throw new ConvexError("Only the requester can cancel this request");
+  }
+
+  await ctx.db.patch(args.requestId, {
+    status: "cancelled",
+    updatedAt: Date.now(),
+  });
 }
 
 export async function getIncomingHandler(ctx: Ctx, args: GetIncomingArgs): Promise<any[]> {
-  throw new ConvexError("Not implemented");
+  return await ctx.db
+    .query("paymentRequests")
+    .withIndex("by_recipient_status_createdAt", (q: any) =>
+      q.eq("to", args.recipientAddress).eq("status", "pending")
+    )
+    .order("desc")
+    .collect();
 }
 
 export async function getOutgoingHandler(ctx: Ctx, args: GetOutgoingArgs): Promise<any[]> {
-  throw new ConvexError("Not implemented");
+  return await ctx.db
+    .query("paymentRequests")
+    .withIndex("by_requester_createdAt", (q: any) =>
+      q.eq("from", args.requesterAddress)
+    )
+    .order("desc")
+    .collect();
 }
 
 export const create = mutation({
