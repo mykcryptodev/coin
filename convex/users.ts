@@ -55,6 +55,24 @@ export const checkUsernameAvailable = query({
   },
 });
 
+export const searchByUsernamePrefix = query({
+  args: {
+    prefix: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const normalized = normalizeUsername(args.prefix);
+    if (normalized.length === 0) return [];
+
+    return await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) =>
+        q.gte("username", normalized).lt("username", normalized + "\uffff")
+      )
+      .take(args.limit ?? 10);
+  },
+});
+
 export const setUsername = mutation({
   args: {
     cdpUserId: v.string(),
