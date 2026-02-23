@@ -17,6 +17,7 @@ import { SlideContent } from '@/components/onboarding/slide-content';
 import { StepButtons } from '@/components/onboarding/step-buttons';
 import { ThemedView } from '@/components/themed-view';
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 
 const ONBOARDING_KEY = '@coin-expo/onboarding-completed';
 
@@ -26,9 +27,11 @@ export default function OnboardingScreen() {
   const availableUsernameRef = useRef<string | null>(null);
   const [hasAvailableUsername, setHasAvailableUsername] = useState(false);
   const [savingUsername, setSavingUsername] = useState(false);
+  const avatarStorageIdRef = useRef<Id<"_storage"> | null>(null);
   const router = useRouter();
   const { currentUser } = useCurrentUser();
   const setUsername = useMutation(api.users.setUsername);
+  const updateAvatar = useMutation(api.users.updateAvatar);
 
   const walletAddress =
     currentUser?.evmSmartAccounts?.[0] ??
@@ -48,11 +51,18 @@ export default function OnboardingScreen() {
       if (!username || !walletAddress || !currentUser?.userId) return;
       setSavingUsername(true);
       await setUsername({ username, walletAddress, cdpUserId: currentUser.userId });
+      if (avatarStorageIdRef.current) {
+        await updateAvatar({
+          cdpUserId: currentUser.userId,
+          walletAddress,
+          storageId: avatarStorageIdRef.current,
+        });
+      }
       await finishOnboarding();
     } else {
       activeIndex.set(activeIndex.get() + 1);
     }
-  }, [activeIndex, finishOnboarding, setUsername, walletAddress, currentUser?.userId]);
+  }, [activeIndex, finishOnboarding, setUsername, updateAvatar, walletAddress, currentUser?.userId]);
 
   const decreaseActiveIndex = useCallback(() => {
     activeIndex.set(Math.max(0, activeIndex.get() - 1));
@@ -70,11 +80,18 @@ export default function OnboardingScreen() {
     setHasAvailableUsername(username !== null);
   }, []);
 
+  const handleAvatarStorageId = useCallback((storageId: string | null) => {
+    avatarStorageIdRef.current = storageId as Id<"_storage"> | null;
+  }, []);
+
   return (
     <ThemedView style={styles.container}>
       <SlideContent
         activeIndex={activeIndex}
         onAvailableUsernameChange={handleAvailableUsernameChange}
+        onAvatarStorageId={handleAvatarStorageId}
+        walletAddress={walletAddress}
+        cdpUserId={currentUser?.userId ?? null}
         saving={savingUsername}
       />
       <Dots activeIndex={activeIndex} count={3} dotSize={10} />
